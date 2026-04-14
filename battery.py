@@ -1,4 +1,6 @@
 import pandas as pd
+from pathlib import Path
+import fastnda
 
 
 class Test:
@@ -123,3 +125,81 @@ class BatteriesManager:
     
     def names(self):
         return [battery.name for battery in self.batteries.values()]
+    
+    
+    
+def to_pandas(file : str):
+    """
+    На вход получаем путь к файлу испытаний в txt или ndax(nda) формате.
+    
+    На выход pd.DataFrame со стандартными столбцами
+    columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+    
+    None в случае ошибки и сообщение об ошибке
+    """
+    
+    def find_header(file):
+        with open(file, "r", encoding="cp1251") as f:
+            n = 0
+            while True:
+                line = f.readline()
+                if "Cycle" in line and "Time,s" in line:
+                    return n
+                n += 1
+                if n > 50:
+                    raise ValueError("Не найдена шапка таблицы в файле (Cycle)")
+            
+            
+    columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+    extension = Path(file).suffix
+    if extension in [".ndax", ".nda"]:
+        data = fastnda.read(file)
+        data = data.to_pandas()
+        
+        required_cols = ["cycle_count", "step_index", "step_type", "voltage_V", "current_mA", "step_time_s", "total_time_s", "capacity_mAh"]
+        if not all(col in data.columns for col in required_cols):
+            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
+        
+        data["Cycle"] = data["cycle_count"]
+        data["Step_index"] = data["step_index"]
+        data["Step_type"] = data["step_type"]
+        data["U,V"] = data["voltage_V"]
+        data["I,A"] = data["current_mA"] / 1000
+        data["Time,s"] = data["step_time_s"]
+        data["Total_Time,s"] = data["total_time_s"]
+        data["Q,Ah"] = data["capacity_mAh"] / 1000
+        data = data[columns]
+        
+        
+    elif extension == ".txt":
+        data = pd.read_csv(
+            file,
+            sep=r'\s+',
+            skiprows=find_header(file),
+            encoding="cp1251"
+        )
+        
+        required_cols = ["Time,s", "U,V", "I,A", "Q,Ah", "Step", "Cycle"]
+        if not all(col in data.columns for col in required_cols):
+            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
+        
+        if data.iloc[-1].isna().sum() > 1:
+            data = data.iloc[:-1]
+        data[["Time,s", "U,V", "I,A", "Q,Ah"]] = data[["Time,s", "U,V", "I,A", "Q,Ah"]].astype(float)
+        
+        data['Total_Time,s'] = data['Time,s'] + data.groupby('Step', sort=False)['Time,s'].max().shift().fillna(0).cumsum().loc[data['Step']].values
+        data["Total_Time,s"] -= data["Total_Time,s"].min()
+        
+        data[['Step_index', 'Step_type']] = data['Step'].str.extract(r'^(\d*\.?\d*)([A-Za-z]*)')
+        data[["Step_index", "Cycle"]] = data[["Step_index", "Cycle"]].astype(int)
+        data.loc[data["Step_type"] == "DCCC", "Step_type"] = "CC Dchg"
+        data.loc[data["Step_type"] == "RLAX", "Step_type"] = "Rest"
+        data.loc[data["Step_type"] == "CHCC", "Step_type"] = "CC Chg"
+        data.loc[data["Step_type"] == "CHCV", "Step_type"] = "CV Dchg"
+        data = data[columns]
+    
+    
+    else:
+        raise ValueError(f"Файл {file} не имеет нужного расширения")
+        
+    return data

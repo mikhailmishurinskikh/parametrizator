@@ -9,12 +9,11 @@ from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 
 
-import param_pipeline as pp
-from battery import Test, Battery
+from battery import to_pandas
 from constants import TESTS_TABLE_HEADER
 
-from ui_choose_file import Ui_ChooseFileDialog
-from ui_tests import Ui_TestsWidget
+from ui_py.ui_choose_test import Ui_ChooseFileDialog
+from ui_py.ui_tests import Ui_TestsWidget
 
 
 
@@ -119,6 +118,7 @@ class TestsPage(QWidget, Ui_TestsWidget):
         return super().eventFilter(watched, event)
        
        
+       
 class TestsTable(QTableWidget):
     testSelected = Signal(int)
     
@@ -130,6 +130,8 @@ class TestsTable(QTableWidget):
         
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setSelectionMode(QTableWidget.SingleSelection)
+        
+        self.horizontalHeader().hideSection(0)
         
         self.itemSelectionChanged.connect(self.tableRowSelected)
         self.itemChanged.connect(self.nameChanged)
@@ -366,7 +368,7 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
         if file_path:
             self.lineEdit.setText(file_path)
             try:
-                df = pp.to_pandas(file_path)
+                df = to_pandas(file_path)
                 self.df = df
                 self.file = file_path
                 

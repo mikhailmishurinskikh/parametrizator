@@ -1,13 +1,13 @@
-from PySide6.QtCore import Qt, Signal, QEvent
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QDialog,
-                               QMessageBox, QDialogButtonBox, QTableWidgetItem,
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (QWidget, QDialog,
+                               QMessageBox, QTableWidgetItem,
                                QHeaderView, QTableWidget, QPushButton)
 
 from battery import Battery, BatteriesManager
 from constants import BATTERIES_TABLE_HEADER
 
-from ui_batteries import Ui_BatteriesPage
-from ui_battery_params import Ui_BatteryParamsDialog
+from ui_py.ui_batteries import Ui_BatteriesPage
+from ui_py.ui_battery_params import Ui_BatteryParamsDialog
 
 
 class BatteriesPage(QWidget, Ui_BatteriesPage):
@@ -72,6 +72,8 @@ class BatteriesTable(QTableWidget):
         
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setSelectionMode(QTableWidget.SingleSelection)
+        
+        self.horizontalHeader().hideSection(0)
         
         self.itemChanged.connect(self.batteryParamsChanged)
         

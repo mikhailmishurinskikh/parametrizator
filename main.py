@@ -6,7 +6,7 @@ matplotlib.use('qtagg')
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget,
                                QStackedWidget)
 
-from ui_main_window import Ui_MainWindow
+from ui_py.ui_main_window import Ui_MainWindow
 
 from testsPage import TestsPage
 from batteriesPage import BatteriesPage
