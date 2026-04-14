@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CurvesPage</class>
+ <widget class="QWidget" name="CurvesPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>534</width>
+    <height>494</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="5,8,1">
+   <item>
+    <layout class="QHBoxLayout" name="listLayout"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="graphLayout"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1,2,1,2,2">
+     <item>
+      <widget class="QPushButton" name="save_button">
+       <property name="text">
+        <string>Сохранить</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Ось X</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="oX_comboBox">
+       <item>
+        <property name="text">
+         <string comment="Емкость, Ач">Q</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string comment="Емкость/масса, Ач/кг">Q/m</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Ось Y</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="oY_comboBox">
+       <item>
+        <property name="text">
+         <string comment="Напряжение общее, В">V общее</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string comment="Напряжение на 1 аккумулятор, В">V на аккум.</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="plot_button">
+       <property name="text">
+        <string>Построить</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

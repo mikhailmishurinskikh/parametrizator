@@ -4,7 +4,6 @@ from PySide6.QtWidgets import (QWidget, QDialog,
                                QHeaderView, QTableWidget, QPushButton)
 
 from battery import Battery, BatteriesManager
-from constants import BATTERIES_TABLE_HEADER
 
 from ui_py.ui_batteries import Ui_BatteriesPage
 from ui_py.ui_battery_params import Ui_BatteryParamsDialog
@@ -62,31 +61,40 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
     
 class BatteriesTable(QTableWidget):
+    class Column:
+        header = ["id АКБ", "Название", "Число аккумуляторов", "Масса, г", "Данные испытаний"]
+        ID = 0
+        NAME = 1
+        NUM_CELLS = 2
+        MASS = 3
+        BUTTON = 4
+        
     batterySelected = Signal(int)
     
     def __init__(self, parent):
         super().__init__(parent)
-        self.setColumnCount(5)
-        self.setHorizontalHeaderLabels(BATTERIES_TABLE_HEADER)
+        
+        self.setColumnCount(len(self.Column.header))
+        self.setHorizontalHeaderLabels(self.Column.header)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setSelectionMode(QTableWidget.SingleSelection)
         
-        self.horizontalHeader().hideSection(0)
+        self.horizontalHeader().hideSection(self.Column.ID)
         
         self.itemChanged.connect(self.batteryParamsChanged)
         
         
     def getBatteryId(self, row):
-        return int(self.item(row, 0).text())
+        return int(self.item(row, self.Column.ID).text())
     
     
     def getSelectedId(self):
         row = self.currentRow()
         if row < 0:
             return -1
-        return int(self.item(self.currentRow(), 0).text())
+        return int(self.item(self.currentRow(), self.Column.ID).text())
         
         
     def addBattery(self, battery):
@@ -95,18 +103,18 @@ class BatteriesTable(QTableWidget):
         row_position = self.rowCount()
         self.insertRow(row_position)
         
-        self.setItem(row_position, 0, QTableWidgetItem(f"{battery.id}"))
-        self.setItem(row_position, 1, QTableWidgetItem(battery.name))
-        self.setItem(row_position, 2, QTableWidgetItem(f"{battery.numCells}"))
-        self.setItem(row_position, 3, QTableWidgetItem(f"{battery.mass}"))
+        self.setItem(row_position, self.Column.ID, QTableWidgetItem(f"{battery.id}"))
+        self.setItem(row_position, self.Column.NAME, QTableWidgetItem(battery.name))
+        self.setItem(row_position, self.Column.NUM_CELLS, QTableWidgetItem(f"{battery.numCells}"))
+        self.setItem(row_position, self.Column.MASS, QTableWidgetItem(f"{battery.mass}"))
         
-        for i in range(4):
+        for i in [self.Column.NAME, self.Column.NUM_CELLS, self.Column.MASS]:
             item = self.item(row_position, i)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setToolTip(item.text())
         
         openTestsButton = QPushButton("Просмотр")
-        self.setCellWidget(row_position, 4, openTestsButton)
+        self.setCellWidget(row_position, self.Column.BUTTON, openTestsButton)
         openTestsButton.clicked.connect(
             lambda: self.batterySelected.emit(battery.id)
         )
@@ -117,9 +125,9 @@ class BatteriesTable(QTableWidget):
     def setParams(self, name, numCells, mass):
         self.blockSignals(True)
         row_position = self.currentRow()
-        self.item(row_position, 1).setText(name)
-        self.item(row_position, 2).setText(f"{numCells}")
-        self.item(row_position, 3).setText(f"{mass}")
+        self.item(row_position, self.Column.NAME).setText(name)
+        self.item(row_position, self.Column.NUM_CELLS).setText(f"{numCells}")
+        self.item(row_position, self.Column.MASS).setText(f"{mass}")
         self.blockSignals(False)
         
     

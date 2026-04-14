@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QDialog,
                                QMessageBox, QDialogButtonBox, QTableWidgetItem,
-                               QHeaderView, QTableWidget, QComboBox)
+                               QHeaderView, QTableWidget, QComboBox, QApplication)
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -10,14 +10,13 @@ from matplotlib.transforms import blended_transform_factory
 
 
 from battery import to_pandas
-from constants import TESTS_TABLE_HEADER
 
 from ui_py.ui_choose_test import Ui_ChooseFileDialog
-from ui_py.ui_tests import Ui_TestsWidget
+from ui_py.ui_tests import Ui_TestsPage
 
 
 
-class TestsPage(QWidget, Ui_TestsWidget):
+class TestsPage(QWidget, Ui_TestsPage):
     def __init__(self, parent):
         super().__init__(parent)
         self.setupUi(self)
@@ -37,7 +36,7 @@ class TestsPage(QWidget, Ui_TestsWidget):
         
     def setBattery(self, battery):
         self.battery = battery
-        self.batteryLabel.setText(f"{battery.name} (id {battery.id})")
+        self.batteryLabel.setText(f"{battery.name}")
         
         self.table.fillTests(battery)
         
@@ -84,7 +83,7 @@ class TestsPage(QWidget, Ui_TestsWidget):
         self.separateTest_button.clicked.connect(lambda: self.separateTest_finish(ok=True))
         self.helpLabel.setText("Выберите одну область на графике или две граничные")
         
-        self.window().installEventFilter(self)
+        QApplication.instance().installEventFilter(self)
         self.canvas.startSelection()
         
         
@@ -104,7 +103,7 @@ class TestsPage(QWidget, Ui_TestsWidget):
                 self.add_test(df, "Нет файла")
         
         self.canvas.stopSelection()        
-        self.window().removeEventFilter(self)
+        QApplication.instance().removeEventFilter(self)
         self.separateTest_button.clicked.disconnect()
         self.separateTest_button.setText("Выделить выбранное в отдельное испытание")
         self.separateTest_button.clicked.connect(self.separateTest_start)
@@ -112,33 +111,54 @@ class TestsPage(QWidget, Ui_TestsWidget):
         
         
     def eventFilter(self, watched, event):
-        if watched != self.canvas and watched != self.parent:
-            if event.type() == QEvent.MouseButtonPress:
+        if event.type() == QEvent.MouseButtonPress:
+            pos = event.globalPosition().toPoint()
+            widget = QApplication.widgetAt(pos)
+            
+            if widget != self.canvas and widget != self.separateTest_button:
                 self.separateTest_finish(ok=False)
+            
+        elif event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+                self.separateTest_finish(ok=True)
+                return True
+            
+            else:
+                self.separateTest_finish(ok=False)
+
         return super().eventFilter(watched, event)
        
        
        
 class TestsTable(QTableWidget):
+    class Column:
+        header = ["id теста", "Название", "Имя файла", "Средний ток, А", "Тип испытания"]
+        ID = 0
+        NAME = 1
+        FILE = 2
+        CURRENT = 3
+        COMBO_BOX = 4
+        
     testSelected = Signal(int)
     
     def __init__(self, parent):
         super().__init__(parent)
-        self.setColumnCount(5)
-        self.setHorizontalHeaderLabels(TESTS_TABLE_HEADER)
+        
+        self.setColumnCount(len(self.Column.header))
+        self.setHorizontalHeaderLabels(self.Column.header)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setSelectionMode(QTableWidget.SingleSelection)
         
-        self.horizontalHeader().hideSection(0)
+        self.horizontalHeader().hideSection(self.Column.ID)
         
         self.itemSelectionChanged.connect(self.tableRowSelected)
         self.itemChanged.connect(self.nameChanged)
         
         
     def getTestId(self, row):
-        return int(self.item(row, 0).text())
+        return int(self.item(row, self.Column.ID).text())
 
         
     def addTest(self, test):
@@ -146,12 +166,13 @@ class TestsTable(QTableWidget):
         
         row_position = self.rowCount()
         self.insertRow(row_position)
-        self.setItem(row_position, 0, QTableWidgetItem(f"{test.id}"))
-        self.setItem(row_position, 1, QTableWidgetItem(test.name))
-        self.setItem(row_position, 2, QTableWidgetItem(test.file))
-        self.setItem(row_position, 3, QTableWidgetItem(f"{test.df["I,A"].mean():.2f}"))
+        self.setItem(row_position, self.Column.ID, QTableWidgetItem(f"{test.id}"))
+        self.setItem(row_position, self.Column.NAME, QTableWidgetItem(test.name))
+        self.setItem(row_position, self.Column.FILE, QTableWidgetItem(test.file))
+        self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem(f"{test.df["I,A"].mean():.2f}"))
         
-        for i in [0,2,3]:
+        
+        for i in [self.Column.ID, self.Column.FILE, self.Column.CURRENT]:
             item = self.item(row_position, i)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setToolTip(item.text())
@@ -164,7 +185,7 @@ class TestsTable(QTableWidget):
             "Импульсы"
         ])
         testTypeComboBox.setCurrentText(test.testType)
-        self.setCellWidget(row_position, 4, testTypeComboBox)
+        self.setCellWidget(row_position, self.Column.COMBO_BOX, testTypeComboBox)
         
         testTypeComboBox.currentTextChanged.connect(
             lambda text, test=test: self.changeTestType(text, test)

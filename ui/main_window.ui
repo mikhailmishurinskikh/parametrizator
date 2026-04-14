@@ -30,7 +30,7 @@
      <string>Меню</string>
     </property>
     <addaction name="batteriesAction"/>
-    <addaction name="graphsAction"/>
+    <addaction name="curvesAction"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -45,9 +45,9 @@
     <string>Таблица испытаний</string>
    </property>
   </action>
-  <action name="graphsAction">
+  <action name="curvesAction">
    <property name="text">
-    <string>Построение графиков</string>
+    <string>Разрядные кривые</string>
    </property>
   </action>
  </widget>

@@ -99,7 +99,7 @@ class Battery:
         self.name = name
         self.numCells = numCells
         self.mass = mass
-
+        
 
 
 class BatteriesManager:
@@ -125,6 +125,18 @@ class BatteriesManager:
     
     def names(self):
         return [battery.name for battery in self.batteries.values()]
+    
+    
+    def curves(self):
+        curves = {}
+        for battery in self.batteries.values():
+            batteryCurves = {"tests" : {}, "battery" : battery}
+            for test in battery.tests.values():
+                if test.testType in ["Разрядная кривая", "Зарядная кривая"]:
+                    batteryCurves["tests"][test.id] = test
+            
+            curves[battery.id] = batteryCurves
+        return curves
     
     
     
