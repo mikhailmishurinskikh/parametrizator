@@ -54,7 +54,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         battery = self.batteries.get(batteryId)
         
-        dialog = BatteryParamsDialog(self, battery.name, battery.numCells, battery.mass)
+        dialog = BatteryParamsDialog(self, battery.name, battery.numCells, battery.mass, "Изменение параметров АКБ")
         if dialog.exec() == QDialog.Accepted:
             battery.setParams(*dialog.params())
             self.table.setParams(*dialog.params())
@@ -152,9 +152,11 @@ class BatteriesTable(QTableWidget):
         
         
 class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
-    def __init__(self, parent=None, name="", numCells=1, mass=5):
+    def __init__(self, parent=None, name="", numCells=1, mass=5, windowTitle="Создание новой АКБ"):
         super().__init__(parent)
         self.setupUi(self)
+        
+        self.setWindowTitle(windowTitle)
         
         self.nameInput.setText(name)
         self.numCellsInput.setValue(numCells)

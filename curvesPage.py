@@ -37,6 +37,10 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.canvas.setLabels(xlabel, ylabel)
         
         selected = self.list.getSelected()
+        
+        if not(selected):
+            self.canvas.finishPlot(empty=True)
+            return
 
         for ids in selected:
             battery_name = self.curves[ids["batteryId"]]["battery"].name
@@ -101,7 +105,7 @@ class CurvesList(QTreeWidget):
 
             ids = item.data(self.Column.CHECK, Qt.UserRole)
             if ids is not None:
-                if (item.checkState(self.Column.CHECK)):
+                if item.checkState(self.Column.CHECK) == Qt.Checked:
                     selected.append(ids)
             
             iterator += 1
@@ -143,7 +147,9 @@ class CurvesCanvas(FigureCanvas):
                      f"{test.name}")
        
         
-    def finishPlot(self):
-        self.ax.legend()
+    def finishPlot(self, empty=False):
+        if not empty:
+            self.ax.legend()
+            
         self.figure.set_tight_layout(True)
         self.draw_idle()

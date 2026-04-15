@@ -53,6 +53,27 @@ class Test:
         
         df["Total_Time,s"] = df["Total_Time,s"] - df["Total_Time,s"].min()
         return df
+    
+    
+    def cutDots(self, startNum, endNum):
+        if len(self.df) <= startNum + endNum:
+            return None
+        
+        if endNum == 0:
+            return self.df.iloc[startNum:]
+        
+        else:
+            return self.df.iloc[startNum:-endNum]
+        
+    
+    def setType(self, text):
+        if text == "Разрядная кривая":
+            pass
+        
+        self.testType = text
+        
+        return text, "ok"
+                    
 
 
 

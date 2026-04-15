@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,8,1,10,2">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,8,1,10,1">
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
      <item>
@@ -67,7 +67,7 @@
     <layout class="QHBoxLayout" name="graphLayout"/>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QPushButton" name="separateTest_button">
        <property name="text">
@@ -76,12 +76,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="helpLabel">
+      <widget class="QPushButton" name="cutDots_button">
        <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignCenter</set>
+        <string>Удалить крайние точки</string>
        </property>
       </widget>
      </item>
