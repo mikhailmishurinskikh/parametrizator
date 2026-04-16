@@ -48,7 +48,7 @@ class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
 
 class SeparateTestCanvas(FigureCanvas):
     def __init__(self, parent, test):        
-        super().__init__(plt.Figure())
+        super().__init__(plt.Figure(constrained_layout=True))
         self.setParent(parent)
         self.test = test
         

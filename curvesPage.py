@@ -1,7 +1,10 @@
+import os
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QWidget, QTreeWidget, QHeaderView,
                                QAbstractItemView, QTreeWidgetItem,
-                               QTreeWidgetItemIterator)
+                               QTreeWidgetItemIterator, QFileDialog,
+                               QMessageBox)
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -23,12 +26,13 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.graphLayout.addWidget(self.canvas)
         
         self.plot_button.clicked.connect(self.plot)
+        self.save_button.clicked.connect(self.canvas.save)
         
         
-    def update(self, batteries):
+    def updatePage(self, batteries):
         self.curves = batteries.curves()
-        self.list.update(self.curves)
-        self.canvas.figure.clf()
+        self.list.updateList(self.curves)
+        self.canvas.clearAll()
         
         
     def plot(self):
@@ -43,12 +47,11 @@ class CurvesPage(QWidget, Ui_CurvesPage):
             return
 
         for ids in selected:
-            battery_name = self.curves[ids["batteryId"]]["battery"].name
+            battery = self.curves[ids["batteryId"]]["battery"]
             test = self.curves[ids["batteryId"]]["tests"][ids["testId"]]
-            self.canvas.plot(test, battery_name)
+            self.canvas.plot(test, battery)
         
-        self.canvas.finishPlot()
-        
+        self.canvas.finishPlot()   
         
         
 class CurvesList(QTreeWidget):
@@ -76,7 +79,8 @@ class CurvesList(QTreeWidget):
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         
         
-    def update(self, curves):
+    def updateList(self, curves):
+        self.clear()
         for batteryId, batteryData in curves.items():
             batteryItem = QTreeWidgetItem(self)
             batteryItem.setText(0, batteryData["battery"].name)
@@ -123,12 +127,16 @@ class CurvesCanvas(FigureCanvas):
     }
     
     def __init__(self, parent):
-        super().__init__(plt.Figure())
+        super().__init__(plt.Figure(constrained_layout=True))
         self.setParent(parent)
         
         self.xlabel = "Q"
         self.ylabel = "V общее"
-        self.axs = None
+
+
+    def clearAll(self):
+        self.figure.clf()
+        self.draw_idle()
        
         
     def setLabels(self, xlabel, ylabel):
@@ -141,15 +149,54 @@ class CurvesCanvas(FigureCanvas):
         self.ax.set_ylabel(self.PLOT_LABELS[ylabel])
         
     
-    def plot(self, test, battery_name):
-        self.ax.plot(test.df["Q,Ah"], test.df["U,V"],
-                     label=f"Батарея {battery_name}\n"
+    def plot(self, test, battery):
+        if self.xlabel == "Q":
+            x = test.df["Q,Ah"]
+
+        elif self.xlabel == "Q/m":
+            x = test.df["Q,Ah"] / (battery.mass / 1000)
+
+        if self.ylabel == "V общее":
+            y = test.df["U,V"]
+
+        elif self.ylabel == "V на аккум.":
+            y = test.df["U,V"] / battery.numCells
+
+        self.ax.plot(x, y,
+                     label=f"Батарея {battery.name}\n"
                      f"{test.name}")
        
         
     def finishPlot(self, empty=False):
         if not empty:
             self.ax.legend()
-            
-        self.figure.set_tight_layout(True)
+
         self.draw_idle()
+
+
+    def save(self):
+        default_name = "unnamed.png"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить график",
+            os.path.join(".", default_name),
+            "PNG Image (*.png);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            original_size = self.figure.get_size_inches()
+            self.figure.set_size_inches(11.69, 8.27)
+        
+            self.figure.savefig(file_path, dpi=150, bbox_inches="tight")
+
+            self.figure.set_size_inches(original_size)
+            
+            QMessageBox.information(self, "График сохранён", f"График сохранён по пути:\n{file_path}")
+        
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить график.\nОшибка: {e}")

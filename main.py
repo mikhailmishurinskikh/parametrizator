@@ -42,7 +42,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         
     def curvesPageOpen(self):
-        self.curvesPage.update(self.batteriesPage.batteries)
+        self.curvesPage.updatePage(self.batteriesPage.batteries)
         self.stacked_widget.setCurrentIndex(1)
 
 

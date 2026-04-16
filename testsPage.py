@@ -212,7 +212,7 @@ class TestsTable(QTableWidget):
                 
 class TestsCanvas(FigureCanvas):
     def __init__(self, parent):
-        super().__init__(plt.Figure())
+        super().__init__(plt.Figure(constrained_layout=True))
         self.setParent(parent)
         
         self.test = None
@@ -231,7 +231,6 @@ class TestsCanvas(FigureCanvas):
         axs[1].set_xlabel("Время, с")
         axs[1].set_ylabel("Ток, А")
         
-        self.figure.set_tight_layout(True)
         self.draw_idle()
           
         
@@ -246,7 +245,7 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
         self.Ok = self.buttonBox.button(QDialogButtonBox.Ok)
         self.Ok.setEnabled(False)
         
-        self.canvas = FigureCanvas(plt.Figure())
+        self.canvas = FigureCanvas(plt.Figure(constrained_layout=True))
         layout = QVBoxLayout(self.plot_view)
         layout.addWidget(self.canvas)
     
@@ -277,8 +276,7 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
                 ax.set_xlabel("Время, с")
                 ax.set_ylabel("Напряжение, В")
                 
-                self.canvas.figure.tight_layout()
-                self.canvas.draw()
+                self.canvas.draw_idle()
                 
                 self.Ok.setEnabled(True)
                 

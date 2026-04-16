@@ -48,7 +48,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
     def changeBatteryParams(self):
         batteryId = self.table.getSelectedId()
         if batteryId < 0:
-            QMessageBox(self, "Не выбрана батарея",
+            QMessageBox.warning(self, "Не выбрана батарея",
                         "Выберите (или добавьте) батарею")
             return
         
