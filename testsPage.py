@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QDialog,
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from battery import to_pandas
 from separateTestDialog import SeparateTest_dialog
@@ -58,6 +59,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         dialog = Choose_file_dialog(self)
         if dialog.exec() == QDialog.Accepted:
             self.add_test(dialog.df, dialog.file)
+        dialog.deleteLater()
             
                 
     def select_test(self, test_id):
@@ -82,6 +84,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         if dialog.exec() == QDialog.Accepted:
             self.add_test(dialog.resultDf, "-")
         dialog.free()
+        dialog.deleteLater()
     
     
     def cutDots(self):
@@ -96,6 +99,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         if dialog.exec() == QDialog.Accepted:
             self.add_test(dialog.resultDf, "-")
         dialog.free()
+        dialog.deleteLater()
                    
        
        
@@ -212,7 +216,7 @@ class TestsTable(QTableWidget):
                 
 class TestsCanvas(FigureCanvas):
     def __init__(self, parent):
-        super().__init__(plt.Figure(constrained_layout=True))
+        super().__init__(Figure(constrained_layout=True))
         self.setParent(parent)
         
         self.test = None
@@ -245,7 +249,7 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
         self.Ok = self.buttonBox.button(QDialogButtonBox.Ok)
         self.Ok.setEnabled(False)
         
-        self.canvas = FigureCanvas(plt.Figure(constrained_layout=True))
+        self.canvas = FigureCanvas(Figure(constrained_layout=True))
         layout = QVBoxLayout(self.plot_view)
         layout.addWidget(self.canvas)
     

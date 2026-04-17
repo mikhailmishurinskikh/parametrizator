@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QDialog, QMessageBox
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from ui_py.ui_cutDots_dialog import Ui_CutDotsDialog
 
@@ -59,7 +60,7 @@ class CutDots_dialog(QDialog, Ui_CutDotsDialog):
         
 class CutDotsCanvas(FigureCanvas):
     def __init__(self, parent, test):        
-        super().__init__(plt.Figure(constrained_layout=True))
+        super().__init__(Figure(constrained_layout=True))
         self.setParent(parent)
         self.test = test
         

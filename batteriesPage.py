@@ -43,6 +43,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         dialog = BatteryParamsDialog(self)
         if dialog.exec() == QDialog.Accepted:
             self.addBattery(*dialog.params())
+        dialog.deleteLater()
             
             
     def changeBatteryParams(self):
@@ -58,6 +59,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         if dialog.exec() == QDialog.Accepted:
             battery.setParams(*dialog.params())
             self.table.setParams(*dialog.params())
+        dialog.deleteLater()
         
     
 class BatteriesTable(QTableWidget):

@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QWidget, QTreeWidget, QHeaderView,
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
 
 from ui_py.ui_curves import Ui_CurvesPage
@@ -130,7 +131,7 @@ class CurvesCanvas(FigureCanvas):
     }
     
     def __init__(self, parent):
-        super().__init__(plt.Figure(constrained_layout=True))
+        super().__init__(Figure(constrained_layout=True))
         self.setParent(parent)
         
         self.xlabel = "Q"
