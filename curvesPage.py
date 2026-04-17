@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QWidget, QTreeWidget, QHeaderView,
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 from ui_py.ui_curves import Ui_CurvesPage
 
@@ -32,26 +33,28 @@ class CurvesPage(QWidget, Ui_CurvesPage):
     def updatePage(self, batteries):
         self.curves = batteries.curves()
         self.list.updateList(self.curves)
-        self.canvas.clearAll()
+        self.canvas.clearAll(draw=True)
         
         
     def plot(self):
         xlabel = self.oX_comboBox.currentText()
         ylabel = self.oY_comboBox.currentText()
-        self.canvas.setLabels(xlabel, ylabel)
         
         selected = self.list.getSelected()
         
-        if not(selected):
+        if not selected:
             self.canvas.finishPlot(empty=True)
             return
-
+        
+        self.canvas.setLabels(xlabel, ylabel)
+        
         for ids in selected:
             battery = self.curves[ids["batteryId"]]["battery"]
             test = self.curves[ids["batteryId"]]["tests"][ids["testId"]]
             self.canvas.plot(test, battery)
         
-        self.canvas.finishPlot()   
+        self.canvas.finishPlot()
+        
         
         
 class CurvesList(QTreeWidget):
@@ -132,15 +135,20 @@ class CurvesCanvas(FigureCanvas):
         
         self.xlabel = "Q"
         self.ylabel = "V общее"
+        
+        self.graphEnabled = False
 
 
-    def clearAll(self):
+    def clearAll(self, draw=False):
         self.figure.clf()
-        self.draw_idle()
+        if draw:
+            self.draw_idle()
+        
+        self.graphEnabled = False
        
         
     def setLabels(self, xlabel, ylabel):
-        self.figure.clf()
+        self.clearAll()
 
         self.xlabel = xlabel
         self.ylabel = ylabel
@@ -151,16 +159,17 @@ class CurvesCanvas(FigureCanvas):
     
     def plot(self, test, battery):
         if self.xlabel == "Q":
-            x = test.df["Q,Ah"]
+            x = test.df["Q,Ah"].abs()
 
         elif self.xlabel == "Q/m":
-            x = test.df["Q,Ah"] / (battery.mass / 1000)
+            x = (test.df["Q,Ah"] / (battery.mass / 1000)).abs()
 
         if self.ylabel == "V общее":
             y = test.df["U,V"]
 
         elif self.ylabel == "V на аккум.":
             y = test.df["U,V"] / battery.numCells
+            
 
         self.ax.plot(x, y,
                      label=f"Батарея {battery.name}\n"
@@ -168,19 +177,25 @@ class CurvesCanvas(FigureCanvas):
        
         
     def finishPlot(self, empty=False):
-        if not empty:
-            self.ax.legend()
-
+        self.ax.legend()
+        self.ax.grid()
+        self.ax.xaxis.set_major_locator(MultipleLocator(1))
         self.draw_idle()
+        
+        self.graphEnabled = True
 
 
     def save(self):
+        if not self.graphEnabled:
+            QMessageBox.warning(self, "Ошибка сохранения", "График пуст. Сначала выберите в списке выше кривые и постройте их")
+            return
+        
         default_name = "unnamed.png"
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Сохранить график",
             os.path.join(".", default_name),
-            "PNG Image (*.png);;All Files (*)"
+            "SVG файлы (*.svg);;PDF файлы (*.pdf);;PNG файлы (*.png);;JPEG файлы (*.jpeg);;Все файлы (*)"
         )
 
         if not file_path:
