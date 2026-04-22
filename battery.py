@@ -1,6 +1,7 @@
 import pandas as pd
 from pathlib import Path
 import fastnda
+from pathvalidate import is_valid_filename
 
 
 class Test:
@@ -107,9 +108,20 @@ class Battery:
     
     def changeTestName(self, test_id, name):
         test = self.tests[test_id]
-        if name not in self.testNames() and name:
+        if not name:
+            message = "Вы не ввели имя"
+            
+        elif name in self.testNames():
+            message = "Имя уже занято другим испытанием"
+        
+        elif not is_valid_filename(name):
+            message = "Ваша операционная система не позволяет " \
+            "создавать файлы с таким именем"
+            
+        else:
+            message = "ok"
             test.name = name
-        return test.name
+        return test.name, message
 
 
     def delTest(self, test_id):
@@ -127,6 +139,22 @@ class Battery:
         self.name = name
         self.numCells = numCells
         self.mass = mass
+        
+        
+    def saveData(self):
+        return {
+            "name" : self.name,
+            "mass" : self.mass,
+            "numCells" : self.numCells,
+            "tests": [
+                {
+                    "name" : test.name,
+                    "df" : test.df.copy(),
+                    "file" : test.file,
+                    "testType" : test.testType
+                } for testId, test in self.tests.items()
+            ]
+        }
         
 
 

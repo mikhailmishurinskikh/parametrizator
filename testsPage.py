@@ -112,12 +112,11 @@ class TestsPage(QWidget, Ui_TestsPage):
        
 class TestsTable(QTableWidget):
     class Column:
-        header = ["id теста", "Название", "Имя файла", "Средний ток, А", "Тип испытания"]
+        header = ["id теста", "Название", "Имя файла", "Тип испытания"]
         ID = 0
         NAME = 1
         FILE = 2
-        CURRENT = 3
-        COMBO_BOX = 4
+        COMBO_BOX = 3
         
     testSelected = Signal(int)
     typeChanged = Signal()
@@ -149,14 +148,9 @@ class TestsTable(QTableWidget):
         self.insertRow(row_position)
         self.setItem(row_position, self.Column.ID, QTableWidgetItem(f"{test.id}"))
         self.setItem(row_position, self.Column.NAME, QTableWidgetItem(test.name))
-        self.setItem(row_position, self.Column.FILE, QTableWidgetItem(test.file))
-        if test.testType in ["Разрядная кривая", "Зарядная кривая"]:
-            self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem("-"))
-        else:
-            self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem(f"{test.df["I,A"].mean():.2f}"))
+        self.setItem(row_position, self.Column.FILE, QTableWidgetItem(test.file))        
         
-        
-        for i in [self.Column.ID, self.Column.FILE, self.Column.CURRENT]:
+        for i in [self.Column.ID, self.Column.FILE]:
             item = self.item(row_position, i)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setToolTip(item.text())
@@ -199,7 +193,9 @@ class TestsTable(QTableWidget):
         self.blockSignals(True)
         test_id = self.getTestId(item.row())
         new_name = item.text()
-        accepted_name = self.parent().battery.changeTestName(test_id, new_name)
+        accepted_name, message = self.parent().battery.changeTestName(test_id, new_name)
+        if message != "ok":
+            QMessageBox.warning(self, "Недопустимое имя", message)
         item.setText(accepted_name)
         self.blockSignals(False)
             

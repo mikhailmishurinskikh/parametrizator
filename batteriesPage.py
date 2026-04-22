@@ -1,4 +1,10 @@
-from PySide6.QtCore import Qt, Signal
+import os
+import zipfile
+import tempfile
+import json
+from pathvalidate import is_valid_filename
+
+from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import (QWidget, QDialog,
                                QMessageBox, QTableWidgetItem,
                                QHeaderView, QTableWidget, QPushButton,
@@ -22,6 +28,8 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         self.batteries = BatteriesManager()
         
+        self.saveThread = None
+        
         self.addBattery_button.clicked.connect(self.add_battery_dialog)
         self.delBattery_button.clicked.connect(self.delBattery)
         self.changeBatteryParams_button.clicked.connect(self.changeBatteryParams)
@@ -37,20 +45,56 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         
     def delBattery(self):
-        battery_id = self.table.deleteSelected()
-        self.batteries.delete(battery_id)
+        batteryId = self.table.deleteSelected()
+        if batteryId < 0:
+            QMessageBox.warning(self, "Не выбрана батарея",
+                        "Выберите (или добавьте) батарею")
+            return
+        
+        self.batteries.delete(batteryId)
         
         
     def saveBattery(self):
-        battery = self.batteries.get(self.table.getSelectedId())
+        if not(self.saveThread is None):
+            QMessageBox.warning(self, "Сохранение не завершено",
+                        "Дождитесь завершения предыдущего сохранения")
+            return
         
-        # default_name = "unnamed.png"
-        # file_path, _ = QFileDialog.getSaveFileName(
-        #     self,
-        #     "Сохранить график",
-        #     os.path.join(".", default_name),
-        #     "SVG файлы (*.svg);;PDF файлы (*.pdf);;PNG файлы (*.png);;JPEG файлы (*.jpeg);;Все файлы (*)"
-        # )
+        batteryId = self.table.getSelectedId()
+        if batteryId < 0:
+            QMessageBox.warning(self, "Не выбрана батарея",
+                        "Выберите (или добавьте) батарею")
+            return
+        
+        data = self.batteries.get(batteryId).saveData()
+        
+        default_name = data["name"]
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить данные батареи в архив",
+            os.path.join(".", default_name),
+            "ZIP архивы (*.zip);;Все файлы (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        self.saveThread = ArchiveSaveWorker(file_path, data)
+        self.saveThread.finished.connect(lambda message: self.saveBattery_finish(message, file_path, data["name"]))
+        self.saveThread.start()
+        
+        
+    def saveBattery_finish(self, message, path, name):
+        self.saveThread.deleteLater()
+        self.saveThread = None
+        if message == "ok":
+            QMessageBox.information(self, "Сохранение завершено",
+                        f"Данные батареи {name} успешно сохранены в архив по пути: {path}")
+            
+        else:
+            QMessageBox.warning(self, "Ошибка при сохранении",
+                        f"Не удалось сохранить данные батареи. Возникла ошибка {message}")
+        
         
         
     def add_battery_dialog(self):            
@@ -217,4 +261,62 @@ class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
                                 "Введите реалистичную массу")
             return False
         
+        if not is_valid_filename(name):
+            QMessageBox.warning(self, "Недопустимое имя",
+                                "Ваша операционная система не позволяет "
+                                "создавать файлы с таким именем")
+            return False
+            
+        
         return True
+    
+    
+
+class ArchiveSaveWorker(QThread):
+    finished = Signal(str)
+    
+    def __init__(self, path, data):
+        super().__init__()
+        self.path = path
+        self.data = data
+        
+    
+    def run(self):
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                metadata = {k: v for k, v in self.data.items() if k != 'tests'}
+                metadata.update({
+                    "tests" : [{
+                        "name" : test["name"],
+                        "file" : test["file"],
+                        "testType" : test["testType"]
+                    } for test in self.data["tests"]]
+                })
+                
+                with open(os.path.join(tmpdir, "metadata.json"),
+                          "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, ensure_ascii=False, indent=2)
+                    
+                    
+                tests = self.data.get('tests', [])
+                for test in tests:
+                    df = test["df"]
+                    
+                    df.to_csv(os.path.join(tmpdir, f"{test["name"]}.csv"),
+                              index=False, encoding="utf-8")
+                    
+                with zipfile.ZipFile(
+                        self.path,
+                        "w",
+                        compression=zipfile.ZIP_DEFLATED,
+                        compresslevel=6) as zipf:
+                    
+                    for filename in os.listdir(tmpdir):
+                        zipf.write(os.path.join(tmpdir, filename), filename)
+                
+            
+            self.finished.emit("ok")
+                
+                
+        except Exception as e:
+            self.finished.emit(str(e))
