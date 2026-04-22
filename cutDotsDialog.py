@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from ui_py.ui_cutDots_dialog import Ui_CutDotsDialog
+from battery import makeCurve
 
 
 class CutDots_dialog(QDialog, Ui_CutDotsDialog):
@@ -69,18 +70,32 @@ class CutDotsCanvas(FigureCanvas):
         self.figure.clf()
         
         test = self.test
-        self.axs = self.figure.subplots(2)
-        axs = self.axs
-        axs[0].plot(test.df["Total_Time,s"], test.df["U,V"], color="red")
-        axs[1].plot(test.df["Total_Time,s"], test.df["I,A"], color="red")
-        axs[0].set_xlabel("Время, с")
-        axs[0].set_ylabel("Напряжение, В")
-        axs[1].set_xlabel("Время, с")
-        axs[1].set_ylabel("Ток, А")
         
-        if df is not None:
-            self.axs[0].plot(df["Total_Time,s"], df["U,V"], color="green")
-            self.axs[1].plot(df["Total_Time,s"], df["I,A"], color="green")
+        if test.testType in ["Разрядная кривая", "Зарядная кривая"]:
+            self.axs = self.figure.subplots(1)
+            axs = self.axs
+            x, y, xlabel, ylabel = makeCurve(test.df)
+            axs.plot(x, y, color="red")
+            axs.set_xlabel(xlabel)
+            axs.set_ylabel(ylabel)
+            
+            if df is not None:
+                x, y, xlabel, ylabel = makeCurve(df)
+                axs.plot(x, y, color="green")
+            
+        else:
+            self.axs = self.figure.subplots(2)
+            axs = self.axs
+            axs[0].plot(test.df["Total_Time,s"], test.df["U,V"], color="red")
+            axs[1].plot(test.df["Total_Time,s"], test.df["I,A"], color="red")
+            axs[0].set_xlabel("Время, с")
+            axs[0].set_ylabel("Напряжение, В")
+            axs[1].set_xlabel("Время, с")
+            axs[1].set_ylabel("Ток, А")
+        
+            if df is not None:
+                self.axs[0].plot(df["Total_Time,s"], df["U,V"], color="green")
+                self.axs[1].plot(df["Total_Time,s"], df["I,A"], color="green")
         
         self.draw_idle()
         

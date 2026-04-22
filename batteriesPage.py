@@ -1,7 +1,8 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QWidget, QDialog,
                                QMessageBox, QTableWidgetItem,
-                               QHeaderView, QTableWidget, QPushButton)
+                               QHeaderView, QTableWidget, QPushButton,
+                               QFileDialog)
 
 from battery import Battery, BatteriesManager
 
@@ -24,6 +25,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         self.addBattery_button.clicked.connect(self.add_battery_dialog)
         self.delBattery_button.clicked.connect(self.delBattery)
         self.changeBatteryParams_button.clicked.connect(self.changeBatteryParams)
+        self.saveBattery_button.clicked.connect(self.saveBattery)
         self.table.batterySelected.connect(
             lambda battery_id: self.batterySelected.emit(self.batteries.get(battery_id))
         )
@@ -37,6 +39,18 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
     def delBattery(self):
         battery_id = self.table.deleteSelected()
         self.batteries.delete(battery_id)
+        
+        
+    def saveBattery(self):
+        battery = self.batteries.get(self.table.getSelectedId())
+        
+        # default_name = "unnamed.png"
+        # file_path, _ = QFileDialog.getSaveFileName(
+        #     self,
+        #     "Сохранить график",
+        #     os.path.join(".", default_name),
+        #     "SVG файлы (*.svg);;PDF файлы (*.pdf);;PNG файлы (*.png);;JPEG файлы (*.jpeg);;Все файлы (*)"
+        # )
         
         
     def add_battery_dialog(self):            

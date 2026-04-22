@@ -21,7 +21,7 @@
     <layout class="QHBoxLayout" name="graphLayout"/>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1,2,1,2,2">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1,2,1,2,0,2">
      <item>
       <widget class="QPushButton" name="save_button">
        <property name="text">
@@ -75,6 +75,13 @@
          <string comment="Напряжение на 1 аккумулятор, В">V на аккум.</string>
         </property>
        </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="settings_button">
+       <property name="text">
+        <string>...</string>
+       </property>
       </widget>
      </item>
      <item>

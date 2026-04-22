@@ -4,14 +4,15 @@ import fastnda
 
 
 class Test:
-    def __init__(self, df, file, counter):
+    def __init__(self, df, file, counter, testType):
         self.df = df
         self.file = file
-        self.testType = "Исходное испытание"
+        self.testType = testType
         self.name = f"Испытание {counter}"
         self.id = counter
-        self.parts = {}
-        self.defineParts()
+        if testType not in ["Разрядная кривая", "Зарядная кривая"]:
+            self.parts = {}
+            self.defineParts()
         
         
     def defineParts(self):
@@ -67,28 +68,34 @@ class Test:
         
     
     def setType(self, text):
-        if text == "Разрядная кривая":
-            pass
+        message = "ok"
         
-        self.testType = text
+        if message == "ok":
+            self.testType = text
+        else:
+            text = self.testType
         
-        return text, "ok"
-                    
+        return text, message
+    
+    
+    def possibleTypes(self):
+        if "Total_Time,s" not in self.df:
+            return ["Разрядная кривая", "Зарядная кривая"]
+        else:
+            return ["Исходное испытание", "Разрядная кривая", "Зарядная кривая"]
 
 
 
 class Battery:
     def __init__(self, name, numCells, mass, battery_id):
         self.id = battery_id
-        self.name = name
-        self.numCells = numCells
-        self.mass = mass
+        self.setParams(name, numCells, mass)
         self.tests = {}
         self.test_counter = 0
         
         
-    def addTest(self, df, file):
-        test = Test(df, file, self.test_counter)
+    def addTest(self, df, file, testType):
+        test = Test(df, file, self.test_counter, testType)
         self.tests[self.test_counter] = test
         self.test_counter += 1
         return test
@@ -163,12 +170,12 @@ class BatteriesManager:
     
 def to_pandas(file : str):
     """
-    На вход получаем путь к файлу испытаний в txt или ndax(nda) формате.
+    На вход получаем путь к файлу испытаний в txt, ndax(nda) формате.
     
     На выход pd.DataFrame со стандартными столбцами
     columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
     
-    None в случае ошибки и сообщение об ошибке
+    Сообщение об ошибке
     """
     
     def find_header(file):
@@ -183,9 +190,9 @@ def to_pandas(file : str):
                     raise ValueError("Не найдена шапка таблицы в файле (Cycle)")
             
             
-    columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
     extension = Path(file).suffix
     if extension in [".ndax", ".nda"]:
+        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         data = fastnda.read(file)
         data = data.to_pandas()
         
@@ -200,11 +207,13 @@ def to_pandas(file : str):
         data["I,A"] = data["current_mA"] / 1000
         data["Time,s"] = data["step_time_s"]
         data["Total_Time,s"] = data["total_time_s"]
-        data["Q,Ah"] = data["capacity_mAh"] / 1000
+        data["Q,Ah"] = data["capacity_mAh"].abs() / 1000
         data = data[columns]
+        return data, "Исходное испытание"
         
         
     elif extension == ".txt":
+        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         data = pd.read_csv(
             file,
             sep=r'\s+',
@@ -228,11 +237,77 @@ def to_pandas(file : str):
         data.loc[data["Step_type"] == "DCCC", "Step_type"] = "CC Dchg"
         data.loc[data["Step_type"] == "RLAX", "Step_type"] = "Rest"
         data.loc[data["Step_type"] == "CHCC", "Step_type"] = "CC Chg"
-        data.loc[data["Step_type"] == "CHCV", "Step_type"] = "CV Dchg"
+        data.loc[data["Step_type"] == "CHCV", "Step_type"] = "CV Chg"
+        data["Q,Ah"] = data["Q,Ah"].abs()
         data = data[columns]
+        return data, "Исходное испытание"
     
     
+    elif extension == ".csv":
+        columns = ['Ucell,V', 'Q/m,Ah/kg']
+        data = pd.read_csv(file, sep=";", decimal=",")
+        
+        if not ("U_уд(B)" in data.columns and "Q_уд(Ач/кг)" in data.columns):
+            raise ValueError(f"Файл должен быть стандартного формата как в таблице учёта")
+        
+        data["Ucell,V"] = data["U_уд(B)"]
+        data["Q/m,Ah/kg"] = data["Q_уд(Ач/кг)"].abs()
+        return data, "Разрядная кривая"
+        
     else:
         raise ValueError(f"Файл {file} не имеет нужного расширения")
+    
+    
+def makeCurve(df):
+    if "Q,Ah" in df.columns:
+        x = df["Q,Ah"]
+        xlabel = "Емкость, Ач"
         
-    return data
+    elif "Q/m,Ah/kg" in df.columns:
+        x = df["Q/m,Ah/kg"]
+        xlabel = "Удельная емкость, Ач/кг"
+        
+    if "U,V" in df.columns:
+        y = df["U,V"]
+        ylabel = "Напряжение, В"
+        
+    elif "Ucell,V" in df.columns:
+        y = df["Ucell,V"]
+        ylabel = "Напряжение на 1 акк."
+    
+    return x, y, xlabel, ylabel
+
+
+
+def calcQ(test, battery, xlabel, ylabel=None):
+    if xlabel == "Q":
+        if "Q,Ah" in test.df.columns:
+            x = test.df["Q,Ah"]
+        
+        elif "Q/m,Ah/kg" in test.df.columns:
+            x = test.df["Q/m,Ah/kg"] * (battery.mass / 1000) / battery.numCells
+
+    elif xlabel == "Q/m":
+        if "Q,Ah" in test.df.columns:
+            x = (test.df["Q,Ah"] / (battery.mass / 1000)).abs() * battery.numCells
+        
+        elif "Q/m,Ah/kg" in test.df.columns:
+            x = test.df["Q/m,Ah/kg"]
+            
+    if ylabel  is None: return x
+
+    if ylabel == "V общее":
+        if "U,V" in test.df.columns:
+            y = test.df["U,V"]
+        
+        elif "Ucell,V" in test.df.columns:
+            y = test.df["Ucell,V"] * battery.numCells
+
+    elif ylabel == "V на аккум.":
+        if "U,V" in test.df.columns:
+            y = test.df["U,V"] / battery.numCells
+            
+        elif "Ucell,V" in test.df.columns:
+            y = test.df["Ucell,V"]
+            
+    return x, y

@@ -7,7 +7,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from battery import to_pandas
+from battery import to_pandas, makeCurve
 from separateTestDialog import SeparateTest_dialog
 from cutDotsDialog import CutDots_dialog
 
@@ -33,6 +33,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         self.separateTest_button.clicked.connect(self.separateTest)
         self.cutDots_button.clicked.connect(self.cutDots)
         self.table.testSelected.connect(self.select_test)
+        self.table.typeChanged.connect(lambda: self.canvas.plotTest(self.canvas.test))
         
         
     def setBattery(self, battery):
@@ -45,8 +46,8 @@ class TestsPage(QWidget, Ui_TestsPage):
         self.canvas.draw_idle()
         
     
-    def add_test(self, df, file):
-        test = self.battery.addTest(df, file)
+    def add_test(self, df, file, testType):
+        test = self.battery.addTest(df, file, testType)
         self.table.addTest(test)
         
         
@@ -58,7 +59,7 @@ class TestsPage(QWidget, Ui_TestsPage):
     def add_test_dialog(self):            
         dialog = Choose_file_dialog(self)
         if dialog.exec() == QDialog.Accepted:
-            self.add_test(dialog.df, dialog.file)
+            self.add_test(dialog.df, dialog.file, dialog.testType)
         dialog.deleteLater()
             
                 
@@ -80,9 +81,14 @@ class TestsPage(QWidget, Ui_TestsPage):
                                 "Сперва добавьте или выберите из списка выше испытание")
             return
         
+        if test.testType in ["Зарядная кривая", "Разрядная кривая"]:
+            QMessageBox.warning(self, "Предупреждение",
+                                "Данная функция недоступна для разрядных/зарядных кривых")
+            return
+        
         dialog = SeparateTest_dialog(self, test)
         if dialog.exec() == QDialog.Accepted:
-            self.add_test(dialog.resultDf, "-")
+            self.add_test(dialog.resultDf, "-", test.testType)
         dialog.free()
         dialog.deleteLater()
     
@@ -97,7 +103,8 @@ class TestsPage(QWidget, Ui_TestsPage):
         
         dialog = CutDots_dialog(self, test)
         if dialog.exec() == QDialog.Accepted:
-            self.add_test(dialog.resultDf, "-")
+            self.add_test(dialog.resultDf, "-", test.testType)
+            self.delete_test()
         dialog.free()
         dialog.deleteLater()
                    
@@ -113,6 +120,7 @@ class TestsTable(QTableWidget):
         COMBO_BOX = 4
         
     testSelected = Signal(int)
+    typeChanged = Signal()
     
     def __init__(self, parent):
         super().__init__(parent)
@@ -142,7 +150,10 @@ class TestsTable(QTableWidget):
         self.setItem(row_position, self.Column.ID, QTableWidgetItem(f"{test.id}"))
         self.setItem(row_position, self.Column.NAME, QTableWidgetItem(test.name))
         self.setItem(row_position, self.Column.FILE, QTableWidgetItem(test.file))
-        self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem(f"{test.df["I,A"].mean():.2f}"))
+        if test.testType in ["Разрядная кривая", "Зарядная кривая"]:
+            self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem("-"))
+        else:
+            self.setItem(row_position, self.Column.CURRENT, QTableWidgetItem(f"{test.df["I,A"].mean():.2f}"))
         
         
         for i in [self.Column.ID, self.Column.FILE, self.Column.CURRENT]:
@@ -151,18 +162,15 @@ class TestsTable(QTableWidget):
             item.setToolTip(item.text())
         
         testTypeComboBox = QComboBox()
-        testTypeComboBox.addItems([
-            "Исходное испытание",
-            "Разрядная кривая",
-            "Зарядная кривая",
-            "Импульсы"
-        ])
+        possibleTypes = test.possibleTypes()
+        
+        testTypeComboBox.addItems(possibleTypes)
         testTypeComboBox.setCurrentText(test.testType)
         self.setCellWidget(row_position, self.Column.COMBO_BOX, testTypeComboBox)
         
         testTypeComboBox.currentTextChanged.connect(
             lambda text, test=test, sender=testTypeComboBox: self.changeTestType(text, test, sender)
-            )
+        )
         
         self.blockSignals(False)
     
@@ -178,11 +186,13 @@ class TestsTable(QTableWidget):
     def changeTestType(self, text, test, sender):
         testType, message = test.setType(text)
         if message != "ok":
-            QMessageBox.warning(self, "Предупреждение", message)
+            QMessageBox.warning(self, "Тип испытания не установлен", message)
         
         self.blockSignals(True)
         sender.setCurrentText(testType)
         self.blockSignals(False)
+        
+        self.typeChanged.emit()
     
     
     def nameChanged(self, item):
@@ -226,15 +236,24 @@ class TestsCanvas(FigureCanvas):
         self.figure.clf()
         self.test = test
         
-        self.axs = self.figure.subplots(2)
-        axs = self.axs
-        axs[0].plot(test.df["Total_Time,s"], test.df["U,V"])
-        axs[1].plot(test.df["Total_Time,s"], test.df["I,A"])
-        axs[0].set_xlabel("Время, с")
-        axs[0].set_ylabel("Напряжение, В")
-        axs[1].set_xlabel("Время, с")
-        axs[1].set_ylabel("Ток, А")
+        if test.testType == "Исходное испытание":
+            self.axs = self.figure.subplots(2)
+            axs = self.axs
+            axs[0].plot(test.df["Total_Time,s"], test.df["U,V"])
+            axs[1].plot(test.df["Total_Time,s"], test.df["I,A"])
+            axs[0].set_xlabel("Время, с")
+            axs[0].set_ylabel("Напряжение, В")
+            axs[1].set_xlabel("Время, с")
+            axs[1].set_ylabel("Ток, А")
         
+        elif test.testType in ["Разрядная кривая", "Зарядная кривая"]:
+            self.axs = self.figure.subplots(1)
+            axs = self.axs
+            x, y, xlabel, ylabel = makeCurve(test.df)
+            axs.plot(x, y)
+            axs.set_xlabel(xlabel)
+            axs.set_ylabel(ylabel)
+            
         self.draw_idle()
           
         
@@ -246,6 +265,7 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
         self.choose_button.clicked.connect(self.open_dialog)
         self.df = None
         self.file = None
+        self.testType = None
         self.Ok = self.buttonBox.button(QDialogButtonBox.Ok)
         self.Ok.setEnabled(False)
         
@@ -259,26 +279,36 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
             self,
             "Выберите файл",
             "",  # начальная директория
-            "Все поддерживаемые форматы (*.txt *.nda *.ndax);;"
+            "Все поддерживаемые форматы (*.txt *.nda *.ndax *.csv);;"
             "Текстовые файлы (*.txt);;"
             "NDA файлы (*.nda);;"
             "NDAX файлы (*.ndax);;"
+            "CSV файлы (*.csv);;"
             "Все файлы (*.*)"
         )
         
         if file_path:
             self.lineEdit.setText(file_path)
             try:
-                df = to_pandas(file_path)
+                df, testType = to_pandas(file_path)
                 self.df = df
                 self.file = file_path
+                self.testType = testType
                 
                 self.canvas.figure.clear()        
                 ax = self.canvas.figure.subplots()
                 
-                ax.plot(df["Total_Time,s"], df["U,V"])
-                ax.set_xlabel("Время, с")
-                ax.set_ylabel("Напряжение, В")
+                if testType == "Исходное испытание":
+                    ax.plot(df["Total_Time,s"], df["U,V"])
+                    ax.set_xlabel("Время, с")
+                    ax.set_ylabel("Напряжение, В")
+                
+                elif testType in ["Разрядная кривая", "Зарядная кривая"]:
+                    x, y, xlabel, ylabel = makeCurve(df)
+                        
+                    ax.plot(x, y)
+                    ax.set_xlabel(xlabel)
+                    ax.set_ylabel(ylabel)
                 
                 self.canvas.draw_idle()
                 
