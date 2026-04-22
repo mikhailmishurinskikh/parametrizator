@@ -3,7 +3,6 @@ from pathlib import Path
 import fastnda
 from pathvalidate import is_valid_filename
 
-
 class Test:
     def __init__(self, df, file, counter, testType):
         self.df = df
@@ -130,11 +129,6 @@ class Battery:
         self.tests.pop(test_id)
         
         
-    def changeParams(self, param, value):
-        if param == "Название":
-            pass
-        
-        
     def setParams(self, name, numCells, mass):
         self.name = name
         self.numCells = numCells
@@ -196,16 +190,7 @@ class BatteriesManager:
     
     
     
-def to_pandas(file : str):
-    """
-    На вход получаем путь к файлу испытаний в txt, ndax(nda) формате.
-    
-    На выход pd.DataFrame со стандартными столбцами
-    columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-    
-    Сообщение об ошибке
-    """
-    
+def to_pandas(file, filter):    
     def find_header(file):
         with open(file, "r", encoding="cp1251") as f:
             n = 0
@@ -217,7 +202,7 @@ def to_pandas(file : str):
                 if n > 50:
                     raise ValueError("Не найдена шапка таблицы в файле (Cycle)")
             
-            
+    
     extension = Path(file).suffix
     if extension in [".ndax", ".nda"]:
         columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
@@ -237,8 +222,7 @@ def to_pandas(file : str):
         data["Total_Time,s"] = data["total_time_s"]
         data["Q,Ah"] = data["capacity_mAh"].abs() / 1000
         data = data[columns]
-        return data, "Исходное испытание"
-        
+        return data, "Исходное испытание"    
         
     elif extension == ".txt":
         columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
@@ -270,8 +254,7 @@ def to_pandas(file : str):
         data = data[columns]
         return data, "Исходное испытание"
     
-    
-    elif extension == ".csv":
+    elif extension == ".csv" and filter == "Нормированные кривые из таблицы учета (*.csv)":
         columns = ['Ucell,V', 'Q/m,Ah/kg']
         data = pd.read_csv(file, sep=";", decimal=",")
         
@@ -280,6 +263,20 @@ def to_pandas(file : str):
         
         data["Ucell,V"] = data["U_уд(B)"]
         data["Q/m,Ah/kg"] = data["Q_уд(Ач/кг)"].abs()
+        return data, "Разрядная кривая"
+    
+    elif extension == ".csv" and filter == "Стандартные CSV файлы (*.csv)":
+        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        data = pd.read_csv(file)
+        if not all(col in data.columns for col in columns):
+            raise ValueError(f"В файле {file} нет одного из столбцов {columns}")
+        return data, "Исходное испытание"
+    
+    elif extension == ".csv" and filter == "Разрядные/зарядные кривые CSV (*.csv)":
+        columns = ['Ucell,V', 'Q/m,Ah/kg']
+        data = pd.read_csv(file)
+        if not all(col in data.columns for col in columns):
+            raise ValueError(f"В файле {file} нет одного из столбцов {columns}")
         return data, "Разрядная кривая"
         
     else:

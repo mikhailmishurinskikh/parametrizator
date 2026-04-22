@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import (QWidget, QDialog,
                                QMessageBox, QTableWidgetItem,
                                QHeaderView, QTableWidget, QPushButton,
-                               QFileDialog)
+                               QFileDialog, QProgressDialog)
 
 from battery import Battery, BatteriesManager
 
@@ -28,7 +28,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         self.batteries = BatteriesManager()
         
-        self.saveThread = None
+        self.archiveThread = None
         
         self.addBattery_button.clicked.connect(self.add_battery_dialog)
         self.delBattery_button.clicked.connect(self.delBattery)
@@ -79,14 +79,15 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         if not file_path:
             return
         
-        self.saveThread = ArchiveSaveWorker(file_path, data)
-        self.saveThread.finished.connect(lambda message: self.saveBattery_finish(message, file_path, data["name"]))
-        self.saveThread.start()
+        self.archiveThread = ArchiveSaveWorker(file_path, data)
+        self.archiveThread.finished.connect(lambda message: self.saveBattery_finish(message, file_path, data["name"]))
+        self.archiveThread.start()
         
         
     def saveBattery_finish(self, message, path, name):
-        self.saveThread.deleteLater()
-        self.saveThread = None
+        self.archiveThread.finished.disconnect()
+        self.archiveThread.deleteLater()
+        self.archiveThread = None
         if message == "ok":
             QMessageBox.information(self, "Сохранение завершено",
                         f"Данные батареи {name} успешно сохранены в архив по пути: {path}")
@@ -113,7 +114,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         battery = self.batteries.get(batteryId)
         
-        dialog = BatteryParamsDialog(self, battery.name, battery.numCells, battery.mass, "Изменение параметров АКБ")
+        dialog = BatteryParamsDialog(self, battery.name, battery.numCells, battery.mass)
         if dialog.exec() == QDialog.Accepted:
             battery.setParams(*dialog.params())
             self.table.setParams(*dialog.params())
@@ -212,21 +213,27 @@ class BatteriesTable(QTableWidget):
         
         
 class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
-    def __init__(self, parent=None, name="", numCells=1, mass=5, windowTitle="Создание новой АКБ"):
+    def __init__(self, parent=None, name="", numCells=1, mass=5):
         super().__init__(parent)
         self.setupUi(self)
-        
-        self.setWindowTitle(windowTitle)
         
         self.nameInput.setText(name)
         self.numCellsInput.setValue(numCells)
         self.massInput.setValue(mass)
+        self.tests = {}
+        
+        self.thread = None
         
         if name:
             self.changing = True
+            self.setWindowTitle("Изменение параметров АКБ")
+            self.selectFile_button.setText("Недоступно")
         
         else:
             self.changing = False
+            self.setWindowTitle("Создание новой АКБ")
+            
+        self.selectFile_button.clicked.connect(self.loadFromFile)
         
         
     def params(self):
@@ -271,6 +278,68 @@ class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
         return True
     
     
+    def loadFromFile(self):
+        if self.changing:
+            QMessageBox.warning("Загрузка батареи из архива недоступна "
+                                "при редактировании уже добавленной батареи")
+            return
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выберите файл",
+            "",  # начальная директория
+            "ZIP архивы (*.zip);;"
+            "Все файлы (*.*)"
+        )
+        
+        if file_path:
+            progress = QProgressDialog("Загрузка батареи...", "Отмена", 0, 100, self)
+            progress.setWindowTitle("Загрузка")
+            progress.setWindowModality(Qt.WindowModality.ApplicationModal)
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+            
+            
+            self.thread = ArchiveLoadWorker(file_path)
+            self.thread.paramsRead.connect(self.setParams)
+            self.thread.testsRead.connect(self.setTests)
+            self.thread.finished.connect(lambda x: progress.close())
+            
+            self.thread.start()
+            progress.exec()
+            
+            
+        
+    def setParams(self, name, mass, numCells, message):
+        if name:
+            try:
+                self.nameInput.setText(name)
+            except:
+                message += "Не удалось установить название батареи\n"
+        
+        if mass > 0:
+            try:
+                self.massInput.setValue(mass)
+            except:
+                message += "Не удалось установить массу батареи\n"
+        
+        if numCells > 0:
+            try:
+                self.numCellsInput.setValue(numCells)
+            except:
+                message += "Не удалось установить число аккумуляторов\n"
+        
+        if message:
+            QMessageBox.warning(self, "Предупреждение", message)
+            
+            
+    def setTests(self, tests):
+        self.tests = tests
+            
+            
+        
+            
+        
 
 class ArchiveSaveWorker(QThread):
     finished = Signal(str)
@@ -318,5 +387,61 @@ class ArchiveSaveWorker(QThread):
             self.finished.emit("ok")
                 
                 
+        except Exception as e:
+            self.finished.emit(str(e))
+            
+            
+class ArchiveLoadWorker(QThread):
+    paramsRead = Signal(str, float, int, str)
+    testsRead = Signal(dict)
+    finished = Signal(str)
+    
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+        
+    
+    def run(self):
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with zipfile.ZipFile(self.path, 'r') as zipf:
+                    zipf.extractall(tmpdir)
+                
+                metadata = None
+                metadata_path = os.path.join(tmpdir, "metadata.json")
+                messageMetadata = ""                
+                if os.path.exists(metadata_path):
+                    try:
+                        with open(metadata_path, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                    except:
+                        messageMetadata += "Не удалось открыть файл metadata.json\n"
+                
+                else:
+                    messageMetadata += "Файл metadata.json не найден в архиве\n"
+                
+                if metadata:
+                    name = metadata.get('name', "")
+                    
+                    try:
+                        mass = float(metadata.get('mass', 5.0))
+                        if mass < 5: raise ValueError()
+                    except:
+                        mass = -1
+                        messageMetadata += "Масса имеет неверный формат\n"
+                    
+                    try:
+                        numCells = int(metadata.get('numCells', 1))
+                        if numCells < 1: raise ValueError()
+                    except:
+                        numCells = -1
+                        messageMetadata += "Число ячеек имеет неверный формат\n"
+                    
+                    self.paramsRead.emit(name, mass, numCells, messageMetadata)
+                    
+                self.testsRead.emit({})
+                
+            self.finished.emit("ok")
+                    
         except Exception as e:
             self.finished.emit(str(e))

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>144</height>
+    <height>158</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -62,6 +62,20 @@
      </item>
      <item row="0" column="1">
       <widget class="QLineEdit" name="nameInput"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Загрузить из архива</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QPushButton" name="selectFile_button">
+       <property name="text">
+        <string>Выбрать файл:</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

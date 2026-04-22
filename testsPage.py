@@ -271,22 +271,21 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
     
         
     def open_dialog(self):
-        file_path, _ = QFileDialog.getOpenFileName(
+        file_path, filter = QFileDialog.getOpenFileName(
             self,
             "Выберите файл",
             "",  # начальная директория
-            "Все поддерживаемые форматы (*.txt *.nda *.ndax *.csv);;"
-            "Текстовые файлы (*.txt);;"
-            "NDA файлы (*.nda);;"
             "NDAX файлы (*.ndax);;"
-            "CSV файлы (*.csv);;"
+            "Текстовые файлы ЯРОСТАНМАШ (*.txt);;"
+            "Нормированные кривые из таблицы учета (*.csv);;"
+            "Стандартные CSV файлы (*.csv);;"
+            "Разрядные/зарядные кривые CSV (*.csv);;"
             "Все файлы (*.*)"
         )
         
         if file_path:
-            self.lineEdit.setText(file_path)
             try:
-                df, testType = to_pandas(file_path)
+                df, testType = to_pandas(file_path, filter)
                 self.df = df
                 self.file = file_path
                 self.testType = testType
@@ -305,7 +304,8 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
                     ax.plot(x, y)
                     ax.set_xlabel(xlabel)
                     ax.set_ylabel(ylabel)
-                
+                    
+                self.lineEdit.setText(file_path)
                 self.canvas.draw_idle()
                 
                 self.Ok.setEnabled(True)
