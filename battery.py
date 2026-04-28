@@ -9,6 +9,7 @@ class Test:
         self.file = file
         self.testType = testType
         self.name = f"Испытание {counter}"
+        
         self.id = counter
         if testType not in ["Разрядная кривая", "Зарядная кривая"]:
             self.parts = {}
@@ -102,11 +103,15 @@ class Battery:
     
     
     def testNames(self):
-        return [test.name for test in self.tests.values()]
+        return [test.name for test in self.tests.values() if test]
     
     
     def changeTestName(self, test_id, name):
         test = self.tests[test_id]
+        
+        if test.name == name:
+            return name, "ok"
+        
         if not name:
             message = "Вы не ввели имя"
             
@@ -133,23 +138,7 @@ class Battery:
         self.name = name
         self.numCells = numCells
         self.mass = mass
-        
-        
-    def saveData(self):
-        return {
-            "name" : self.name,
-            "mass" : self.mass,
-            "numCells" : self.numCells,
-            "tests": [
-                {
-                    "name" : test.name,
-                    "df" : test.df.copy(),
-                    "file" : test.file,
-                    "testType" : test.testType
-                } for testId, test in self.tests.items()
-            ]
-        }
-        
+
 
 
 class BatteriesManager:
@@ -187,6 +176,15 @@ class BatteriesManager:
             
             curves[battery.id] = batteryCurves
         return curves
+    
+    
+    def BPAdata(self):
+        return list(self.batteries.values())
+    
+    
+    def clear(self):
+        self.batteries.clear()
+        self.batteries_counter = 0
     
     
     
@@ -266,18 +264,15 @@ def to_pandas(file, filter):
         return data, "Разрядная кривая"
     
     elif extension == ".csv" and filter == "Стандартные CSV файлы (*.csv)":
-        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columnsRow = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columnsNormCurve = ['Ucell,V', 'Q/m,Ah/kg']
         data = pd.read_csv(file)
-        if not all(col in data.columns for col in columns):
-            raise ValueError(f"В файле {file} нет одного из столбцов {columns}")
-        return data, "Исходное испытание"
-    
-    elif extension == ".csv" and filter == "Разрядные/зарядные кривые CSV (*.csv)":
-        columns = ['Ucell,V', 'Q/m,Ah/kg']
-        data = pd.read_csv(file)
-        if not all(col in data.columns for col in columns):
-            raise ValueError(f"В файле {file} нет одного из столбцов {columns}")
-        return data, "Разрядная кривая"
+        if all(col in data.columns for col in columnsRow):
+            return data, "Исходное испытание"
+        elif all(col in data.columns for col in columnsNormCurve):
+            return data, "Разрядная кривая"
+        else:
+            raise ValueError(f"В файле {file} нет нужных столбцов:\n{columnsRow}\nили\n{columnsNormCurve}")
         
     else:
         raise ValueError(f"Файл {file} не имеет нужного расширения")

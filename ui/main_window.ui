@@ -31,6 +31,9 @@
     </property>
     <addaction name="batteriesAction"/>
     <addaction name="curvesAction"/>
+    <addaction name="separator"/>
+    <addaction name="saveAllAction"/>
+    <addaction name="loadAllAction"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -48,6 +51,16 @@
   <action name="curvesAction">
    <property name="text">
     <string>Разрядные кривые</string>
+   </property>
+  </action>
+  <action name="saveAllAction">
+   <property name="text">
+    <string>Сохранить всё</string>
+   </property>
+  </action>
+  <action name="loadAllAction">
+   <property name="text">
+    <string>Загрузить всё</string>
    </property>
   </action>
  </widget>

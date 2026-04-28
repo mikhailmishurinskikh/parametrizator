@@ -10,6 +10,7 @@ from ui_py.ui_main_window import Ui_MainWindow
 from testsPage import TestsPage
 from batteriesPage import BatteriesPage
 from curvesPage import CurvesPage
+from bpaLoader import saveDialog, loadDialog
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -31,6 +32,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.batteriesAction.triggered.connect(lambda: self.stacked_widget.setCurrentIndex(0))
         self.curvesAction.triggered.connect(self.curvesPageOpen)
         
+        self.saveAllAction.triggered.connect(self.saveAllToBPA)
+        self.loadAllAction.triggered.connect(self.loadAllFromBPA)
+        
         self.testsPage.battariesPage_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
         
         self.batteriesPage.batterySelected.connect(lambda battery: self.testsPageOpen(battery))
@@ -44,6 +48,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def curvesPageOpen(self):
         self.curvesPage.updatePage(self.batteriesPage.batteries)
         self.stacked_widget.setCurrentIndex(1)
+        
+        
+    def saveAllToBPA(self):
+        saveDialog(self, self.batteriesPage.batteries.BPAdata())
+    
+    
+    def loadAllFromBPA(self):
+        self.stacked_widget.setCurrentIndex(0)
+        loadDialog(self, self.batteriesPage.batteries)
+        self.batteriesPage.fillTable()
 
 
 

@@ -1,7 +1,11 @@
-from PySide6.QtCore import Qt, Signal, QEvent
+import tempfile
+import zipfile
+import os
+
+from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QDialog,
                                QMessageBox, QDialogButtonBox, QTableWidgetItem,
-                               QHeaderView, QTableWidget, QComboBox, QApplication)
+                               QHeaderView, QTableWidget, QComboBox, QProgressDialog)
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -22,6 +26,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         self.setupUi(self)
         
         self.battery = None
+        self.archiveThread = None
         
         self.table = TestsTable(self)   
         self.tableLayout.addWidget(self.table)
@@ -30,6 +35,8 @@ class TestsPage(QWidget, Ui_TestsPage):
         
         self.addTest_button.clicked.connect(self.add_test_dialog)
         self.delTest_button.clicked.connect(self.delete_test)
+        self.addArchive_button.clicked.connect(self.add_from_archive)
+        self.saveArchive_button.clicked.connect(self.save_to_archive)
         self.separateTest_button.clicked.connect(self.separateTest)
         self.cutDots_button.clicked.connect(self.cutDots)
         self.table.testSelected.connect(self.select_test)
@@ -46,11 +53,44 @@ class TestsPage(QWidget, Ui_TestsPage):
         self.canvas.draw_idle()
         
     
-    def add_test(self, df, file, testType):
+    def add_test(self, df, file, testType, name=None):
         test = self.battery.addTest(df, file, testType)
+        if name:
+            _, message = self.battery.changeTestName(test.id, name)
+            if message != "ok":
+                QMessageBox.warning(self, "Некорректное название испытания",
+                                    f"Имя {name} не подходит по причине - {message}.")
         self.table.addTest(test)
         
+    
+    def add_from_archive(self):
+        archive_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выберите файл",
+            "",  # начальная директория
+            "ZIP архивы (*.zip);;"
+            "Все файлы (*.*)"
+        )
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with zipfile.ZipFile(archive_path, 'r') as zipf:
+                    zipf.extractall(tmpdir)
+                    
+                for filename in os.listdir(tmpdir):
+                    file_path = os.path.join(tmpdir, filename)
+                    
+                    try:
+                        df, testType = to_pandas(file_path, "Стандартные CSV файлы (*.csv)")
+                    except Exception as e:
+                        QMessageBox.warning(self, "Некорректный файл", f"Не удалось прочитать файл {filename}")
+                        continue
+                    
+                    self.add_test(df, archive_path, testType, filename.replace(".csv", ""))
         
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка чтения архива", f"Возникла ошибка: {str(e)}")
+            
+            
     def delete_test(self):
         test_id = self.table.deleteSelected()
         self.battery.delTest(test_id)
@@ -107,6 +147,46 @@ class TestsPage(QWidget, Ui_TestsPage):
             self.delete_test()
         dialog.free()
         dialog.deleteLater()
+        
+        
+    def save_to_archive(self):
+        if not(self.archiveThread is None):
+            QMessageBox.warning(self, "Сохранение не завершено",
+                        "Дождитесь завершения предыдущего сохранения")
+            return
+        
+        if not self.battery.tests:
+            QMessageBox.warning(self, "Испытания не добавлены",
+                        "Нет испытаний для сохранения")
+            return
+        
+        default_name = self.battery.name
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить данные батареи в архив",
+            os.path.join(".", default_name),
+            "ZIP архивы (*.zip);;Все файлы (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        self.archiveThread = ArchiveSaveWorker(file_path, list(self.battery.tests.values()))
+        self.archiveThread.finished.connect(lambda message: self.save_to_archive_finish(message, file_path, self.battery.name))
+        self.archiveThread.start()
+        
+        
+    def save_to_archive_finish(self, message, path, name):
+        self.archiveThread.finished.disconnect()
+        self.archiveThread.deleteLater()
+        self.archiveThread = None
+        if message == "ok":
+            QMessageBox.information(self, "Сохранение завершено",
+                        f"Данные батареи {name} успешно сохранены в архив по пути: {path}")
+            
+        else:
+            QMessageBox.warning(self, "Ошибка при сохранении",
+                        f"Не удалось сохранить данные батареи. Возникла ошибка {message}")
                    
        
        
@@ -276,15 +356,14 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
             "Выберите файл",
             "",  # начальная директория
             "NDAX файлы (*.ndax);;"
-            "Текстовые файлы ЯРОСТАНМАШ (*.txt);;"
             "Нормированные кривые из таблицы учета (*.csv);;"
             "Стандартные CSV файлы (*.csv);;"
-            "Разрядные/зарядные кривые CSV (*.csv);;"
+            "Текстовые файлы ЯРОСТАНМАШ (*.txt);;"
             "Все файлы (*.*)"
         )
         
         if file_path:
-            try:
+            try:    
                 df, testType = to_pandas(file_path, filter)
                 self.df = df
                 self.file = file_path
@@ -312,3 +391,37 @@ class Choose_file_dialog(QDialog, Ui_ChooseFileDialog):
                 
             except Exception as e:
                 QMessageBox.warning(self, "Некорректный файл", str(e))
+                
+                
+                
+class ArchiveSaveWorker(QThread):
+    finished = Signal(str)
+    
+    def __init__(self, path, tests):
+        super().__init__()
+        self.path = path
+        self.tests = tests
+        
+    
+    def run(self):
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                for test in self.tests:
+                    test.df.to_csv(os.path.join(tmpdir, f"{test.name}.csv"),
+                              index=False, encoding="utf-8")
+                    
+                with zipfile.ZipFile(
+                        self.path,
+                        "w",
+                        compression=zipfile.ZIP_DEFLATED,
+                        compresslevel=6) as zipf:
+                    
+                    for filename in os.listdir(tmpdir):
+                        zipf.write(os.path.join(tmpdir, filename), filename)
+                
+            
+            self.finished.emit("ok")
+                
+                
+        except Exception as e:
+            self.finished.emit(str(e))

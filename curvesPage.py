@@ -78,7 +78,7 @@ class CurvesPage(QWidget, Ui_CurvesPage):
             self.canvas.plot(test, battery)
         
         self.canvas.finishPlot()
-        
+                
         
         
 class CurvesList(QTreeWidget):

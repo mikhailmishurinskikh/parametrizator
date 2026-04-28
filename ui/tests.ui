@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,8,1,10,1">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,8,1,1,10,1">
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0">
      <item>
@@ -58,6 +58,24 @@
       <widget class="QPushButton" name="delTest_button">
        <property name="text">
         <string>Удалить испытание</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="addArchive_button">
+       <property name="text">
+        <string>Добавить испытания из архива</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="saveArchive_button">
+       <property name="text">
+        <string>Сохранить все в архив</string>
        </property>
       </widget>
      </item>
