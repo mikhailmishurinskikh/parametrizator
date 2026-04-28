@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QWidget, QTreeWidget, QHeaderView,
@@ -11,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
 
-from battery import calcQ
+from battery import calcQ, calcWh
 
 from ui_py.ui_curves import Ui_CurvesPage
 from ui_py.ui_graph_params import Ui_GraphParams
@@ -48,10 +49,10 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.graphLayout.addWidget(self.canvas)
         
         self.plot_button.clicked.connect(self.plot)
-        self.save_button.clicked.connect(self.canvas.save)
+        self.save_button.clicked.connect(self.save)
         self.settings_button.clicked.connect(self.canvas.settingsDialog)
         
-        self.oX_comboBox.currentTextChanged.connect(lambda text: self.list.updateQItems(text, self.curves))
+        self.oX_comboBox.currentTextChanged.connect(lambda text: self.list.updateQWItems(text, self.curves))
         
         
     def updatePage(self, batteries):
@@ -78,16 +79,54 @@ class CurvesPage(QWidget, Ui_CurvesPage):
             self.canvas.plot(test, battery)
         
         self.canvas.finishPlot()
+        
+        
+    def save(self):        
+        default_name = "unnamed"
+        file_path, filter = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить данные",
+            os.path.join(".", default_name),
+            "CSV файлы (*.csv);;"
+            "PDF файлы (*.pdf);;PNG файлы (*.png);;JPEG файлы (*.jpeg);;Все файлы (*)"
+            "Все файлы (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        if filter == "CSV файлы (*.csv)":
+            xlabel = self.oX_comboBox.currentText()
+            ylabel = self.oY_comboBox.currentText()
+            selected = self.list.getSelected()
+        
+            if not selected:
+                QMessageBox.warning(self, "Ничего не выбрано", "Выберите в списке выше испытания для сохранения")
+        
+            if len(selected) == 1:                
+                ids = selected[0]
+                battery = self.curves[ids["batteryId"]]["battery"]
+                test = self.curves[ids["batteryId"]]["tests"][ids["testId"]]
+                x, y = calcQ(test, battery, xlabel, ylabel)
+                pd.DataFrame({xlabel : x, ylabel : y}).to_csv(file_path, index=False, encoding="utf-8")
+                QMessageBox.information(self, "Данные сохранены", f"Данные сохранены по пути:\n{file_path}")
                 
+            else:
+                QMessageBox.warning(self, "Выбрано более одного испытания", "Возможно сохранять в CSV только одно испытание")
+        
+        else:
+            self.canvas.save(file_path)
+                            
         
         
 class CurvesList(QTreeWidget):
     class Column:
-        header = ["Данные испытаний", "Ёмкость, Ач", "Тип кривой", "Выбрано"]
+        header = ["Данные испытаний", "Ёмкость, Ач", "Энергоёмкость, Вт ч", "Тип кривой", "Выбрано"]
         NAME = 0
         Q = 1
-        TYPE = 2
-        CHECK = 3
+        W = 2
+        TYPE = 3
+        CHECK = 4
     
     def __init__(self, parent):
         super().__init__(parent)
@@ -124,15 +163,17 @@ class CurvesList(QTreeWidget):
                 
                 testItem.setFlags(testItem.flags() | Qt.ItemIsUserCheckable)
                 testItem.setCheckState(self.Column.CHECK, Qt.Unchecked)
-        self.updateQItems(xlabel, curves)
+        self.updateQWItems(xlabel, curves)
                 
                 
-    def updateQItems(self, xlabel, curves):
+    def updateQWItems(self, xlabel, curves):
         if xlabel == "Q":
             self.headerItem().setText(self.Column.Q, "Емкость, Ач")
+            self.headerItem().setText(self.Column.W, "Энергоемкость, Вт ч")
         
         elif xlabel == "Q/m":
             self.headerItem().setText(self.Column.Q, "Уд. емкость, Ач/кг")
+            self.headerItem().setText(self.Column.W, "Уд. энергоемкость, Вт ч/кг")
             
         iterator = QTreeWidgetItemIterator(self)
         while iterator.value():
@@ -146,8 +187,10 @@ class CurvesList(QTreeWidget):
             test = curves[ids["batteryId"]]["tests"][ids["testId"]]
             
             x = calcQ(test, battery, xlabel)
+            Wh = calcWh(test, battery, xlabel)
             
             item.setText(self.Column.Q, f"{x.max():.2f}")
+            item.setText(self.Column.W, Wh)
                 
                 
     def getSelected(self):
@@ -205,7 +248,7 @@ class CurvesCanvas(FigureCanvas):
         x, y = calcQ(test, battery, self.xlabel, self.ylabel)
 
         self.ax.plot(x, y,
-                     label=f"Батарея {battery.name}\n"
+                     label=f"{battery.name}\n"
                      f"{test.name}")
        
         
@@ -246,24 +289,12 @@ class CurvesCanvas(FigureCanvas):
         self.graphEnabled = True
 
 
-    def save(self):
+    def save(self, file_path):
         if not self.graphEnabled:
             QMessageBox.warning(self, "Ошибка сохранения", "График пуст. Сначала выберите в списке выше кривые и постройте их")
             return
-        
-        default_name = "unnamed"
-        file_path, selected_ext = QFileDialog.getSaveFileName(
-            self,
-            "Сохранить график",
-            os.path.join(".", default_name),
-            "SVG файлы (*.svg);;PDF файлы (*.pdf);;PNG файлы (*.png);;JPEG файлы (*.jpeg);;Все файлы (*)"
-        )
-
-        if not file_path:
-            return
 
         try:
-            
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
             original_size = self.figure.get_size_inches()

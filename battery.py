@@ -203,11 +203,11 @@ def to_pandas(file, filter):
     
     extension = Path(file).suffix
     if extension in [".ndax", ".nda"]:
-        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         data = fastnda.read(file)
         data = data.to_pandas()
         
-        required_cols = ["cycle_count", "step_index", "step_type", "voltage_V", "current_mA", "step_time_s", "total_time_s", "capacity_mAh"]
+        required_cols = ["cycle_count", "step_index", "step_type", "voltage_V", "current_mA", "step_time_s", "total_time_s", "capacity_mAh", "energy_mWh"]
         if not all(col in data.columns for col in required_cols):
             raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
         
@@ -216,14 +216,14 @@ def to_pandas(file, filter):
         data["Step_type"] = data["step_type"]
         data["U,V"] = data["voltage_V"]
         data["I,A"] = data["current_mA"] / 1000
-        data["Time,s"] = data["step_time_s"]
         data["Total_Time,s"] = data["total_time_s"]
         data["Q,Ah"] = data["capacity_mAh"].abs() / 1000
+        data["W,Wh"] = data["energy_mWh"].abs() / 1000
         data = data[columns]
         return data, "Исходное испытание"    
         
     elif extension == ".txt":
-        columns = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columns = ['U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         data = pd.read_csv(
             file,
             sep=r'\s+',
@@ -264,7 +264,7 @@ def to_pandas(file, filter):
         return data, "Разрядная кривая"
     
     elif extension == ".csv" and filter == "Стандартные CSV файлы (*.csv)":
-        columnsRow = ['Time,s', 'U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columnsRow = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         columnsNormCurve = ['Ucell,V', 'Q/m,Ah/kg']
         data = pd.read_csv(file)
         if all(col in data.columns for col in columnsRow):
@@ -273,6 +273,49 @@ def to_pandas(file, filter):
             return data, "Разрядная кривая"
         else:
             raise ValueError(f"В файле {file} нет нужных столбцов:\n{columnsRow}\nили\n{columnsNormCurve}")
+        
+    
+    elif extension == ".csv" and filter == "CSV со столбцами NDAX (*.csv)":
+        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        data = pd.read_csv(file, sep=";", decimal=",")
+        
+        required_cols = ["Step Type", "Total Time", "Capacity(Ah)", "Voltage(V)", "Current(A)", "Energy(Wh)"]
+        if not all(col in data.columns for col in required_cols):
+            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
+        
+        data["Cycle"] = 1
+        data["Step_index"] = 1
+        data["Step_type"] = data["Step Type"]
+        data["U,V"] = data["Voltage(V)"]
+        data["I,A"] = data["Current(A)"]
+        data["Total_Time,s"] = pd.to_timedelta(data['Total Time']).dt.total_seconds()
+        data["Total_Time,s"] -= data["Total_Time,s"].min()
+        data["Q,Ah"] = data["Capacity(Ah)"].abs()
+        data["W,Wh"] = data["Energy(Wh)"].abs()
+        data = data[columns]
+        return data, "Исходное испытание"
+    
+    
+    elif extension == ".xlsx":
+        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        data = pd.read_excel(file, sheet_name="record")
+        
+        required_cols = ["Step Type", "Total Time", "Capacity(Ah)", "Voltage(V)", "Current(A)", "Energy(Wh)"]
+        if not all(col in data.columns for col in required_cols):
+            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
+        
+        data["Cycle"] = 1
+        data["Step_index"] = 1
+        data["Step_type"] = data["Step Type"]
+        data["U,V"] = data["Voltage(V)"]
+        data["I,A"] = data["Current(A)"]
+        data["Total_Time,s"] = pd.to_timedelta(data['Total Time']).dt.total_seconds()
+        data["Total_Time,s"] -= data["Total_Time,s"].min()
+        data["Q,Ah"] = data["Capacity(Ah)"].abs()
+        data["W,Wh"] = data["Energy(Wh)"].abs()
+        data = data[columns]
+        return data, "Исходное испытание"
+        
         
     else:
         raise ValueError(f"Файл {file} не имеет нужного расширения")
@@ -331,3 +374,21 @@ def calcQ(test, battery, xlabel, ylabel=None):
             y = test.df["Ucell,V"]
             
     return x, y
+
+
+def calcWh(test, battery, xlabel):
+    if xlabel == "Q":
+        if "W,Wh" in test.df.columns:
+            x = f"{test.df["W,Wh"].max():.2f}"
+            
+        else:
+            x = "-"
+            
+    elif xlabel == "Q/m":
+        if "W,Wh" in test.df.columns:
+            x = f"{test.df["W,Wh"].max() / (battery.mass/1000):.2f}"
+            
+        else:
+            x = "-"
+    
+    return x
