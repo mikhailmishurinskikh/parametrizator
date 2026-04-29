@@ -10,7 +10,7 @@ from ui_py.ui_main_window import Ui_MainWindow
 from testsPage import TestsPage
 from batteriesPage import BatteriesPage
 from curvesPage import CurvesPage
-from bpaLoader import saveDialog, loadDialog
+from bpaLoader import saveDialog, loadDialog, loadBPA
 
 
 
@@ -66,4 +66,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
+    
+    if len(sys.argv) > 1:
+        loadBPA(window, sys.argv[1], window.batteriesPage.batteries)
+        window.batteriesPage.fillTable()
+        
     sys.exit(app.exec())

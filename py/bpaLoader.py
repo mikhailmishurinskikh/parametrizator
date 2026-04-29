@@ -176,6 +176,10 @@ def loadDialog(parent, batteriesManager):
     if not file_path:
         return None
     
+    loadBPA(parent, file_path, batteriesManager)
+    
+
+def loadBPA(parent, file_path, batteriesManager):
     progress = QProgressDialog("Загрузка BPA архива...", "Отмена", 0, 100, parent)
     progress.setWindowTitle("Загрузка")
     progress.setWindowModality(Qt.WindowModality.ApplicationModal)

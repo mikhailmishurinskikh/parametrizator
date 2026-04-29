@@ -16,7 +16,7 @@ exec_directory = ./dist
 project_file = 
 
 # application icon
-icon = C:\Users\admin\AppData\Local\Programs\Python\Python313\Lib\site-packages\PySide6\scripts\deploy_lib\pyside_icon.ico
+icon = icon.ico
 
 [python]
 
