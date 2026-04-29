@@ -1,6 +1,3 @@
-import os
-import zipfile
-import tempfile
 from pathvalidate import is_valid_filename
 
 from PySide6.QtCore import Qt, Signal, QThread

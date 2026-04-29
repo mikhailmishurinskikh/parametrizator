@@ -1,7 +1,7 @@
 @echo off
 echo Compiling UI files...
 
-if not exist "ui_py" mkdir ui_py
+if not exist "py/ui_py" mkdir ui_py
 
 if not exist "ui" (
     echo Error: Folder "ui" not found!
@@ -11,7 +11,7 @@ if not exist "ui" (
 
 for %%f in (ui\*.ui) do (
     echo Processing %%f...
-    pyside6-uic.exe %%f -o ui_py\ui_%%~nf.py
+    pyside6-uic.exe %%f -o py\ui_py\ui_%%~nf.py
 )
 
 echo Done

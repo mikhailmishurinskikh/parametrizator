@@ -13,6 +13,7 @@ from curvesPage import CurvesPage
 from bpaLoader import saveDialog, loadDialog
 
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):        
         super().__init__()
