@@ -43,7 +43,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="tableLayout"/>
+    <widget class="QTableView" name="tableView"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -51,6 +51,13 @@
       <widget class="QPushButton" name="addTest_button">
        <property name="text">
         <string>Добавить испытание</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="editTest_button">
+       <property name="text">
+        <string>Редактировать испытание</string>
        </property>
       </widget>
      </item>
@@ -82,7 +89,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="graphLayout"/>
+    <widget class="GraphicsLayoutWidget" name="graphicsView"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -93,17 +100,17 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="cutDots_button">
-       <property name="text">
-        <string>Удалить крайние точки</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

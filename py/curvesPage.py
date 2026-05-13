@@ -81,7 +81,11 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.canvas.finishPlot()
         
         
-    def save(self):        
+    def save(self):
+        if not self.canvas.graphEnabled:
+            QMessageBox.warning(self, "Ошибка сохранения", "График пуст. Сначала выберите в списке выше кривые и постройте их")
+            return
+        
         default_name = "unnamed"
         file_path, filter = QFileDialog.getSaveFileName(
             self,
@@ -290,10 +294,6 @@ class CurvesCanvas(FigureCanvas):
 
 
     def save(self, file_path):
-        if not self.graphEnabled:
-            QMessageBox.warning(self, "Ошибка сохранения", "График пуст. Сначала выберите в списке выше кривые и постройте их")
-            return
-
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
 

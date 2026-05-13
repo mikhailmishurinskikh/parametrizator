@@ -6,16 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>549</width>
-    <height>300</height>
+    <width>546</width>
+    <height>399</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="20,1">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,1">
    <item>
-    <layout class="QHBoxLayout" name="tableLayout"/>
+    <widget class="QTableView" name="tableView"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -37,6 +37,13 @@
       <widget class="QPushButton" name="delBattery_button">
        <property name="text">
         <string>Удалить АКБ</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="testsOpen_button">
+       <property name="text">
+        <string>Просмотр испытаний</string>
        </property>
       </widget>
      </item>

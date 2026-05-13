@@ -1,14 +1,12 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtWidgets import QDialog, QMessageBox
+import pyqtgraph as pg
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.patches import Rectangle
-from matplotlib.transforms import blended_transform_factory
-
+from plotItems import makeCurve
+import validate
 
 from ui_py.ui_separateTest_dialog import Ui_SeparateTest_dialog
+
 
 
 class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
@@ -20,145 +18,211 @@ class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
         )
         
         self.test = test
-        self.resultDf = None
         
-        self.canvas = SeparateTestCanvas(self, self.test)
-        self.graphLayout.addWidget(self.canvas)
-        self.canvas.startSelection()
+        self.xlabel = self.test.getXlabel()
+        self.graph = makeCurve(self.test.testType)
+        
+        self.graphicsView.addItem(self.graph, row=0, col=0)
+        self.graph.plotDf(self.test.df)
+        
+        self.linesEnable = self.test.df[self.test.getXlabel()].is_monotonic_increasing
+        
+        if self.linesEnable:
+            self.lines = Lines(self, self.test)
+            self.lines.addItems(self.graph)
+            
+            self.lines.cutDots.connect(self.updateSpinBox)
+            self.continious_checkBox.toggled.connect(self.setContinuous)
+            self.continious_checkBox.setChecked(True)
+            
+        else:
+            self.continious_checkBox.setEnabled(False)
+            QMessageBox.warning(self, "Возможности ограничены", "Значения по оси x не являются монотонно возрастающими\n"
+                                "Ограничительные линии недоступны. Можно использовать удаление точек с начала и с конца")
+        
+        self.rightSpinBox.valueChanged.connect(self.cutDots)
+        self.leftSpinBox.valueChanged.connect(self.cutDots)
+        
+        self.new_checkBox.toggled.connect(lambda check: self.nameInput.setEnabled(check))
+        self.nameInput.setEnabled(self.new_checkBox.isChecked())
+            
+            
+    def setContinuous(self, continuous):
+        self.lines.continuous = continuous
+        self.rightSpinBox.setEnabled(continuous)
+        self.leftSpinBox.setEnabled(continuous)
+            
+            
+    def updateSpinBox(self, leftPos, rightPos):
+        left, right = self.findLeftRightDots(leftPos, rightPos)
+        self.blockSignals(True)
+        
+        self.leftSpinBox.setValue(left)
+        self.rightSpinBox.setValue(right)
+        
+        self.setMaximumsSB(left, right)
+        
+        self.blockSignals(False)
+        
+        self.greyPlot(left, right)
+        
+        
+    def greyPlot(self, left, right):
+        dfs = []
+        
+        if left:
+            dfs.append(self.test.df.iloc[:left+1].reset_index())
+        if right:
+            dfs.append(self.test.df.iloc[-right:].reset_index())
+        
+        self.graph.greyPlot(dfs)
+        
     
+    def findLeftRightDots(self, leftPos, rightPos):
+        left = len(self.test.df[self.test.df[self.xlabel] < leftPos])
+        right = len(self.test.df[self.test.df[self.xlabel] > rightPos])
+        return left, right
+        
+        
+    def setMaximumsSB(self, left, right):
+        self.rightSpinBox.setMaximum(len(self.test.df) - left - 1)
+        self.leftSpinBox.setMaximum(len(self.test.df) - right - 1)
+        
+        
+    def cutDots(self, _):
+        left = self.leftSpinBox.value()
+        right = self.rightSpinBox.value()
+        
+        self.setMaximumsSB(left, right)
+        
+        self.greyPlot(left, right)
+        
+        if self.linesEnable:
+            newLeft = self.test.df.iloc[left][self.xlabel]
+            newRight = self.test.df.iloc[-(right + 1)][self.xlabel]
+            self.lines.setLines(newLeft, newRight)
+            
     
-    def free(self):
-        self.canvas.clearAll()
+    def separateTest(self):
+        right = self.rightSpinBox.value()
+        left = self.leftSpinBox.value()
+        
+        df = self.test.df
+        if left:
+            df = df.iloc[left:]
+        if right:
+            df = df.iloc[:(-right)]
+            
+        df = df.copy()
+        
+        if self.xlabel == "Total_Time,s":
+            df[self.xlabel] = df[self.xlabel] - df[self.xlabel].min()
+        return df.reset_index(drop=True)
         
         
     def accept(self):
-        selected = list(self.canvas.selected)
+        resultDf = self.separateTest()
+        if len(resultDf) < 3:
+            QMessageBox.warning(self, "Неправильное выделение", "Область выделения включает менее трех точек")
+            return
         
-        if len(selected) == 0:
-            QMessageBox.warning(self, "Участок не выбран", "Выберите участок на графике")
+        name = self.nameInput.text()
+        new = self.new_checkBox.isChecked()
         
-        elif len(selected) > 2:
-            QMessageBox.warning(self, "Выбрано слишком много участков на графике",
-                                "Выберите либо один участок, либо два участка, ограничивающих область на графике")
-        
+        if new:
+            message = validate.TEST_NAME(name, self.parent().battery)
         else:
-            df = self.test.separateTest(selected)                
-            self.resultDf = df
+            message = "ok"
+        
+        if message == "ok":
+            self.name = name
+            self.new = new
+            self.resultDf = resultDf
             super().accept()
+            
+        else:
+            QMessageBox.warning(self, "Недопустимое название", message)
+            return
     
-
-class SeparateTestCanvas(FigureCanvas):
-    def __init__(self, parent, test):        
-        super().__init__(Figure(constrained_layout=True))
-        self.setParent(parent)
-        self.test = test
+        
+    
+class Lines(QObject):
+    cutDots = Signal(float, float)
+    
+    def __init__(self, parent, test):
+        super().__init__(parent)
+        
+        self.borders = test.defineBorders()
+        
+        self.initLine()
+        
+        self.continuous = False
         
         
-    def startSelection(self):       
-        self.selected = set()
-        self.selected_lines = {}
-        self.rects = {}
-        
-        self.plotTest()
-        self.plotPartsRects()
-        
-        self.connections = [
-            self.mpl_connect('motion_notify_event', self.hoverEvent),
-            self.mpl_connect('figure_leave_event', self.leaveFigureEvent),
-            self.mpl_connect('pick_event', self.pickEvent)
-        ]
-        
-        self.draw_idle()
-        
-        
-    def plotTest(self):
-        test = self.test
-        self.axs = self.figure.subplots(2)
-        axs = self.axs
-        axs[0].plot(test.df["Total_Time,s"], test.df["U,V"])
-        axs[1].plot(test.df["Total_Time,s"], test.df["I,A"])
-        axs[0].set_xlabel("Время, с")
-        axs[0].set_ylabel("Напряжение, В")
-        axs[1].set_xlabel("Время, с")
-        axs[1].set_ylabel("Ток, А")
-        
-        
-    def plotPartsRects(self):
-        parts = self.test.parts
-        transform = blended_transform_factory(
-            self.axs[0].transData,
-            self.figure.transFigure
+    def initLine(self):
+        self.leftLine = pg.InfiniteLine(
+            pos=self.borders[0],
+            pen=pg.mkPen(color="black", width=3),
+            hoverPen=pg.mkPen(color='#FF0000', width=4),
+            movable=True
         )
         
-        for rect_id, part in parts.items():
-            t_min = part["t_min"]
-            t_max = part["t_max"]
-            
-            rect = Rectangle(
-                (t_min, 0),
-                t_max - t_min,
-                1,
-                alpha=0.0,
-                color="grey",
-                picker=True,
-                figure=self.figure,
-                transform=transform
-            )
-            
-            rect.rect_id = rect_id
-            self.rects[rect_id] = rect
-            self.figure.add_artist(rect)
-            
-            
-    def hoverEvent(self, event):
-        for rect in self.rects.values():
-            if rect.rect_id in self.selected:
-                continue
-            
-            if rect.contains_point((event.x, event.y)):
-                rect.set_alpha(0.2)
-            else:
-                rect.set_alpha(0)
+        self.rightLine = pg.InfiniteLine(
+            pos=self.borders[-1],
+            pen=pg.mkPen(color="black", width=3),
+            hoverPen=pg.mkPen(color='#FF0000', width=4),
+            movable=True
+        )
         
-        self.draw_idle()
+        self.region = pg.LinearRegionItem(
+            values=(self.borders[0], self.borders[-1]),
+            brush=pg.mkBrush(100, 100, 255, 50),
+            movable=False
+        )
         
+        self.leftLine.sigPositionChanged.connect(self.moveLines)
+        self.rightLine.sigPositionChanged.connect(self.moveLines)      
+            
+            
+    def moveLines(self):        
+        leftPos = self.leftLine.value()
+        rightPos = self.rightLine.value()
         
-    def leaveFigureEvent(self, event):
-        for rect in self.rects.values():
-            if rect.rect_id in self.selected:
-                continue
-            
-            rect.set_alpha(0)
+        if not self.continuous:
+            leftPos = self.find_nearest(leftPos)
+            rightPos = self.find_nearest(rightPos)
         
-        self.draw_idle()
+        newLeft = min(leftPos, rightPos)
+        newRight = max(leftPos, rightPos)
         
-    
-    def pickEvent(self, event):
-        rect = event.artist
-        if rect.rect_id in self.selected:
-            rect.set_alpha(0.2)
-            self.selected.remove(rect.rect_id)
-            for lines in self.selected_lines[rect.rect_id]:
-                for line in lines:
-                    line.remove()
-            
-            self.selected_lines.pop(rect.rect_id)
-
-        else:
-            self.selected.add(rect.rect_id)
-            df_part = self.test.getPartDf(rect.rect_id)
-            
-            self.selected_lines[rect.rect_id] = [
-                self.axs[0].plot(df_part["Total_Time,s"], df_part["U,V"]),
-                self.axs[1].plot(df_part["Total_Time,s"], df_part["I,A"])
-            ]
-            
-        self.draw_idle()
+        newLeft = max(newLeft, self.borders[0])
+        newRight = min(newRight, self.borders[-1])
+        
+        self.setLines(newLeft, newRight)
+        
+        self.cutDots.emit(leftPos, rightPos)
         
         
-    def clearAll(self):
-        for connection in self.connections:
-            self.mpl_disconnect(connection)
-            
-        self.figure.clf()
-        plt.close(self.figure)
+    def find_nearest(self, pos):
+        return self.borders[min(range(len(self.borders)), 
+                  key=lambda i: abs(self.borders[i] - pos))]
+        
+        
+    def setLines(self, newLeft, newRight):
+        self.leftLine.blockSignals(True)
+        self.rightLine.blockSignals(True)
+        self.region.blockSignals(True)
+        
+        self.leftLine.setPos(newLeft)
+        self.rightLine.setPos(newRight)
+        self.region.setRegion((newLeft, newRight))
+        
+        self.leftLine.blockSignals(False)
+        self.rightLine.blockSignals(False)
+        self.region.blockSignals(False)
+        
+        
+    def addItems(self, plotItem):
+        plotItem.addItem(self.region)
+        plotItem.addItem(self.leftLine)
+        plotItem.addItem(self.rightLine)

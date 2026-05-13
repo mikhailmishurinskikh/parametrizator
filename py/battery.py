@@ -1,89 +1,75 @@
-import pandas as pd
-from pathlib import Path
-import fastnda
-from pathvalidate import is_valid_filename
+class BATTERY_COLUMNS:
+    NAME = 0
+    NUM_CELLS = 1
+    MASS = 2
+    
+    NCOLS = 3
+    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г"]
+    
+    
+class TEST_COLUMNS:
+    NAME = 0
+    TYPE = 1
+    
+    NCOLS = 2
+    HEADERS = ["Имя испытания", "Тип испытания"]
+
 
 class Test:
-    def __init__(self, df, file, counter, testType):
-        self.df = df
-        self.file = file
+    def __init__(self, name, testType, df, test_id):
+        self.df = df.reset_index(drop=True)
         self.testType = testType
-        self.name = f"Испытание {counter}"
+        self.name = name
         
-        self.id = counter
-        if testType not in ["Разрядная кривая", "Зарядная кривая"]:
-            self.parts = {}
-            self.defineParts()
+        self.id = test_id
+        if "Total_Time,s" in df.columns:
+            self.borders = self.defineBorders()
+            
+            
+    def getXlabel(self):
+        if self.testType == "Исходное испытание":
+            xlabel = "Total_Time,s"
+            
+        elif self.testType == "Разрядная кривая":
+            xlabel = "Q,Ah"
+            
+        elif self.testType == "Норм. разрядная кривая":
+            xlabel = "Q/m,Ah/kg"
+            
+        return xlabel
         
         
-    def defineParts(self):
-        parts = []
+    def defineBorders(self):
+        xlabel = self.getXlabel()
+        criteria = [column for column in ["Cycle", "Step_index", "Step_type"] if column in self.df.columns]
+        if not criteria:
+            return [self.df[xlabel].min(), self.df[xlabel].max()]
+        
         borders = set()
+        grouped = self.df.groupby(criteria, observed=False)
         
-        grouped = self.df.groupby(["Cycle", "Step_index", "Step_type"], observed=False)
+        for _, group in grouped:
+            borders.add(group[xlabel].min())
+            borders.add(group[xlabel].max())
         
-        for (cycle, step, step_type), group in grouped:
-            borders.add(group["Total_Time,s"].min())
-            borders.add(group["Total_Time,s"].max())
-        
-        borders = sorted(list(borders))
-        
-        for i in range(len(borders) - 1):
-            parts.append({
-                "t_min": borders[i],
-                "t_max": borders[i + 1]
-            })
-        
-        parts.sort(key=lambda x: x["t_min"])
-        for i, part in enumerate(parts):
-            self.parts[i] = part
-
-        
-    def getPartDf(self, rect_id):
-        time = self.df["Total_Time,s"]
-        return self.df[(time >= self.parts[rect_id]["t_min"]) &
-                       (time <= self.parts[rect_id]["t_max"])]
-                
-                
-    def separateTest(self, selected):
-        if len(selected) == 1:
-            df = self.getPartDf(selected[0]).copy()
-        elif len(selected) == 2:
-            df = pd.DataFrame()
-            for i in range(min(selected), max(selected)+1):
-                df = pd.concat((df, self.getPartDf(i)))
-        
-        df["Total_Time,s"] = df["Total_Time,s"] - df["Total_Time,s"].min()
-        return df
+        return sorted(list(borders))
+         
     
-    
-    def cutDots(self, startNum, endNum):
-        if len(self.df) <= startNum + endNum:
-            return None
-        
-        if endNum == 0:
-            return self.df.iloc[startNum:]
-        
-        else:
-            return self.df.iloc[startNum:-endNum]
-        
-    
-    def setType(self, text):
-        message = "ok"
-        
-        if message == "ok":
-            self.testType = text
-        else:
-            text = self.testType
-        
-        return text, message
+    def setParams(self, name, testType):
+        self.name = name
+        self.testType = testType
     
     
     def possibleTypes(self):
-        if "Total_Time,s" not in self.df:
-            return ["Разрядная кривая", "Зарядная кривая"]
-        else:
-            return ["Исходное испытание", "Разрядная кривая", "Зарядная кривая"]
+        result = []
+        if "Total_Time,s" in self.df:
+            result.append("Исходное испытание")
+        if "Q,Ah" in self.df:
+            result.append("Разрядная кривая")
+        if "Q/m,Ah/kg" in self.df:
+            result.append("Норм. разрядная кривая")
+            
+        return result
 
 
 
@@ -95,43 +81,23 @@ class Battery:
         self.test_counter = 0
         
         
-    def addTest(self, df, file, testType):
-        test = Test(df, file, self.test_counter, testType)
+    def addTest(self, name, testType, df):
+        test = Test(name, testType, df, self.test_counter)
         self.tests[self.test_counter] = test
         self.test_counter += 1
         return test
     
     
+    def delTest(self, test_id):
+        self.tests.pop(test_id, None)
+    
+    
     def testNames(self):
         return [test.name for test in self.tests.values() if test]
-    
-    
-    def changeTestName(self, test_id, name):
-        test = self.tests[test_id]
         
-        if test.name == name:
-            return name, "ok"
         
-        if not name:
-            message = "Вы не ввели имя"
-            
-        elif name in self.testNames():
-            message = "Имя уже занято другим испытанием"
-        
-        elif not is_valid_filename(name):
-            message = "Ваша операционная система не позволяет " \
-            "создавать файлы с таким именем"
-            
-        else:
-            message = "ok"
-            test.name = name
-        return test.name, message
-
-
-    def delTest(self, test_id):
-        if test_id < 0:
-            return
-        self.tests.pop(test_id)
+    def getTest(self, test_id):
+        return self.tests[test_id]
         
         
     def setParams(self, name, numCells, mass):
@@ -171,7 +137,7 @@ class BatteriesManager:
         for battery in self.batteries.values():
             batteryCurves = {"tests" : {}, "battery" : battery}
             for test in battery.tests.values():
-                if test.testType in ["Разрядная кривая", "Зарядная кривая"]:
+                if test.testType in ["Разрядная кривая", "Норм. разрядная кривая"]:
                     batteryCurves["tests"][test.id] = test
             
             curves[battery.id] = batteryCurves
@@ -185,192 +151,53 @@ class BatteriesManager:
     def clear(self):
         self.batteries.clear()
         self.batteries_counter = 0
-    
-    
-    
-def to_pandas(file, filter):    
-    def find_header(file):
-        with open(file, "r", encoding="cp1251") as f:
-            n = 0
-            while True:
-                line = f.readline()
-                if "Cycle" in line and "Time,s" in line:
-                    return n
-                n += 1
-                if n > 50:
-                    raise ValueError("Не найдена шапка таблицы в файле (Cycle)")
-            
-    
-    extension = Path(file).suffix
-    if extension in [".ndax", ".nda"]:
-        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-        data = fastnda.read(file)
-        data = data.to_pandas()
-        
-        required_cols = ["cycle_count", "step_index", "step_type", "voltage_V", "current_mA", "step_time_s", "total_time_s", "capacity_mAh", "energy_mWh"]
-        if not all(col in data.columns for col in required_cols):
-            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
-        
-        data["Cycle"] = data["cycle_count"]
-        data["Step_index"] = data["step_index"]
-        data["Step_type"] = data["step_type"]
-        data["U,V"] = data["voltage_V"]
-        data["I,A"] = data["current_mA"] / 1000
-        data["Total_Time,s"] = data["total_time_s"]
-        data["Q,Ah"] = data["capacity_mAh"].abs() / 1000
-        data["W,Wh"] = data["energy_mWh"].abs() / 1000
-        data = data[columns]
-        return data, "Исходное испытание"    
-        
-    elif extension == ".txt":
-        columns = ['U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-        data = pd.read_csv(
-            file,
-            sep=r'\s+',
-            skiprows=find_header(file),
-            encoding="cp1251"
-        )
-        
-        required_cols = ["Time,s", "U,V", "I,A", "Q,Ah", "Step", "Cycle"]
-        if not all(col in data.columns for col in required_cols):
-            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
-        
-        if data.iloc[-1].isna().sum() > 1:
-            data = data.iloc[:-1]
-        data[["Time,s", "U,V", "I,A", "Q,Ah"]] = data[["Time,s", "U,V", "I,A", "Q,Ah"]].astype(float)
-        
-        data['Total_Time,s'] = data['Time,s'] + data.groupby('Step', sort=False)['Time,s'].max().shift().fillna(0).cumsum().loc[data['Step']].values
-        data["Total_Time,s"] -= data["Total_Time,s"].min()
-        
-        data[['Step_index', 'Step_type']] = data['Step'].str.extract(r'^(\d*\.?\d*)([A-Za-z]*)')
-        data[["Step_index", "Cycle"]] = data[["Step_index", "Cycle"]].astype(int)
-        data.loc[data["Step_type"] == "DCCC", "Step_type"] = "CC Dchg"
-        data.loc[data["Step_type"] == "RLAX", "Step_type"] = "Rest"
-        data.loc[data["Step_type"] == "CHCC", "Step_type"] = "CC Chg"
-        data.loc[data["Step_type"] == "CHCV", "Step_type"] = "CV Chg"
-        data["Q,Ah"] = data["Q,Ah"].abs()
-        data = data[columns]
-        return data, "Исходное испытание"
-    
-    elif extension == ".csv" and filter == "Нормированные кривые из таблицы учета (*.csv)":
-        columns = ['Ucell,V', 'Q/m,Ah/kg']
-        data = pd.read_csv(file, sep=";", decimal=",")
-        
-        if not ("U_уд(B)" in data.columns and "Q_уд(Ач/кг)" in data.columns):
-            raise ValueError(f"Файл должен быть стандартного формата как в таблице учёта")
-        
-        data["Ucell,V"] = data["U_уд(B)"]
-        data["Q/m,Ah/kg"] = data["Q_уд(Ач/кг)"].abs()
-        return data, "Разрядная кривая"
-    
-    elif extension == ".csv" and filter == "Стандартные CSV файлы (*.csv)":
-        columnsRow = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-        columnsNormCurve = ['Ucell,V', 'Q/m,Ah/kg']
-        data = pd.read_csv(file)
-        if all(col in data.columns for col in columnsRow):
-            return data, "Исходное испытание"
-        elif all(col in data.columns for col in columnsNormCurve):
-            return data, "Разрядная кривая"
-        else:
-            raise ValueError(f"В файле {file} нет нужных столбцов:\n{columnsRow}\nили\n{columnsNormCurve}")
         
     
-    elif extension == ".csv" and filter == "CSV со столбцами NDAX (*.csv)":
-        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-        data = pd.read_csv(file, sep=";", decimal=",")
-        
-        required_cols = ["Step Type", "Total Time", "Capacity(Ah)", "Voltage(V)", "Current(A)", "Energy(Wh)"]
-        if not all(col in data.columns for col in required_cols):
-            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
-        
-        data["Cycle"] = 1
-        data["Step_index"] = 1
-        data["Step_type"] = data["Step Type"]
-        data["U,V"] = data["Voltage(V)"]
-        data["I,A"] = data["Current(A)"]
-        data["Total_Time,s"] = pd.to_timedelta(data['Total Time']).dt.total_seconds()
-        data["Total_Time,s"] -= data["Total_Time,s"].min()
-        data["Q,Ah"] = data["Capacity(Ah)"].abs()
-        data["W,Wh"] = data["Energy(Wh)"].abs()
-        data = data[columns]
-        return data, "Исходное испытание"
+    def sort(self, column, reverse):
+        if column == BATTERY_COLUMNS.NAME:
+            return sorted(list(self.batteries.values()),
+                          key=lambda battery: battery.name,
+                          reverse=reverse)
+        elif column == BATTERY_COLUMNS.NUM_CELLS:
+            return sorted(list(self.batteries.values()),
+                          key=lambda battery: battery.numCells,
+                          reverse=reverse)
+        elif column == BATTERY_COLUMNS.MASS:
+            return sorted(list(self.batteries.values()),
+                          key=lambda battery: battery.mass,
+                          reverse=reverse)
     
-    
-    elif extension == ".xlsx":
-        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
-        data = pd.read_excel(file, sheet_name="record")
-        
-        required_cols = ["Step Type", "Total Time", "Capacity(Ah)", "Voltage(V)", "Current(A)", "Energy(Wh)"]
-        if not all(col in data.columns for col in required_cols):
-            raise ValueError(f"В файле {file} нет одного из столбцов {required_cols}")
-        
-        data["Cycle"] = 1
-        data["Step_index"] = 1
-        data["Step_type"] = data["Step Type"]
-        data["U,V"] = data["Voltage(V)"]
-        data["I,A"] = data["Current(A)"]
-        data["Total_Time,s"] = pd.to_timedelta(data['Total Time']).dt.total_seconds()
-        data["Total_Time,s"] -= data["Total_Time,s"].min()
-        data["Q,Ah"] = data["Capacity(Ah)"].abs()
-        data["W,Wh"] = data["Energy(Wh)"].abs()
-        data = data[columns]
-        return data, "Исходное испытание"
-        
-        
-    else:
-        raise ValueError(f"Файл {file} не имеет нужного расширения")
-    
-    
-def makeCurve(df):
-    if "Q,Ah" in df.columns:
-        x = df["Q,Ah"]
-        xlabel = "Емкость, Ач"
-        
-    elif "Q/m,Ah/kg" in df.columns:
-        x = df["Q/m,Ah/kg"]
-        xlabel = "Удельная емкость, Ач/кг"
-        
-    if "U,V" in df.columns:
-        y = df["U,V"]
-        ylabel = "Напряжение, В"
-        
-    elif "Ucell,V" in df.columns:
-        y = df["Ucell,V"]
-        ylabel = "Напряжение на 1 акк."
-    
-    return x, y, xlabel, ylabel
-
 
 
 def calcQ(test, battery, xlabel, ylabel=None):
     if xlabel == "Q":
-        if "Q,Ah" in test.df.columns:
+        if test.testType == "Разрядная кривая":
             x = test.df["Q,Ah"]
         
-        elif "Q/m,Ah/kg" in test.df.columns:
+        elif test.testType == "Норм. разрядная кривая":
             x = test.df["Q/m,Ah/kg"] * (battery.mass / 1000) / battery.numCells
 
     elif xlabel == "Q/m":
-        if "Q,Ah" in test.df.columns:
+        if test.testType == "Разрядная кривая":
             x = (test.df["Q,Ah"] / (battery.mass / 1000)).abs() * battery.numCells
         
-        elif "Q/m,Ah/kg" in test.df.columns:
+        elif test.testType == "Норм. разрядная кривая":
             x = test.df["Q/m,Ah/kg"]
             
-    if ylabel  is None: return x
+    if ylabel is None: return x
 
     if ylabel == "V общее":
-        if "U,V" in test.df.columns:
+        if test.testType == "Разрядная кривая":
             y = test.df["U,V"]
         
-        elif "Ucell,V" in test.df.columns:
+        elif test.testType == "Норм. разрядная кривая":
             y = test.df["Ucell,V"] * battery.numCells
 
     elif ylabel == "V на аккум.":
-        if "U,V" in test.df.columns:
+        if test.testType == "Разрядная кривая":
             y = test.df["U,V"] / battery.numCells
             
-        elif "Ucell,V" in test.df.columns:
+        elif test.testType == "Норм. разрядная кривая":
             y = test.df["Ucell,V"]
             
     return x, y

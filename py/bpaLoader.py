@@ -160,8 +160,7 @@ class LoadBPAWorker(QThread):
         for test_meta in tests_meta:
             parquet_path = os.path.join(battery_path, f"{test_meta['id']}.parquet")
             df = pd.read_parquet(parquet_path)
-            test = battery.addTest(df, test_meta["file"], test_meta["testType"])
-            test.name = test_meta["name"]
+            battery.addTest(test_meta["name"], test_meta["testType"], df)
             
             
             
