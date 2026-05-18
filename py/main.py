@@ -10,7 +10,7 @@ from ui_py.ui_main_window import Ui_MainWindow
 from testsPage import TestsPage
 from batteriesPage import BatteriesPage
 from curvesPage import CurvesPage
-from bpaLoader import saveDialog, loadDialog, loadBPA
+import workers
 
 
 
@@ -52,13 +52,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         
     def saveAllToBPA(self):
-        saveDialog(self, self.batteriesPage.batteries.BPAdata())
+        thread = workers.SaveBPAWorker(self.batteriesPage.batteries.batteriesList())
+        workers.saveDialog(self, thread)
     
     
     def loadAllFromBPA(self):
         self.stacked_widget.setCurrentIndex(0)
-        loadDialog(self, self.batteriesPage.batteries)
-        self.batteriesPage.fillTable()
+        thread = workers.LoadBPAWorker(window.batteriesPage.batteries)
+        workers.loadDialog(self, thread, self.batteriesPage.fillTable)
 
 
 
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     window.show()
     
     if len(sys.argv) > 1:
-        loadBPA(window, sys.argv[1], window.batteriesPage.batteries)
-        window.batteriesPage.fillTable()
+        thread = workers.LoadBPAWorker(window.batteriesPage.batteries)
+        workers.loadDialog(window, thread, window.batteriesPage.fillTable, sys.argv[1])
         
     sys.exit(app.exec())

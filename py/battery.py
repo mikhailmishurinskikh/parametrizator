@@ -22,8 +22,6 @@ class Test:
         self.name = name
         
         self.id = test_id
-        if "Total_Time,s" in df.columns:
-            self.borders = self.defineBorders()
             
             
     def getXlabel(self):
@@ -104,6 +102,10 @@ class Battery:
         self.name = name
         self.numCells = numCells
         self.mass = mass
+        
+    
+    def testsList(self):
+        return list(self.tests.values())
 
 
 
@@ -144,7 +146,7 @@ class BatteriesManager:
         return curves
     
     
-    def BPAdata(self):
+    def batteriesList(self):
         return list(self.batteries.values())
     
     

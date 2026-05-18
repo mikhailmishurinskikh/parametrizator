@@ -1,11 +1,6 @@
-import tempfile
-import zipfile
-import os
-
-from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import (QWidget, QFileDialog, QDialog,
                                QMessageBox, QDialogButtonBox, QHeaderView,
-                               QTableView, QComboBox, QProgressDialog)
+                               QTableView)
 
 import pyqtgraph as pg
 pg.setConfigOptions(background='w', foreground='k')
@@ -14,6 +9,7 @@ from readers import read
 from models import TestsModel
 from separateTestDialog import SeparateTest_dialog
 from plotItems import makeCurve
+import workers
 import validate
 
 from ui_py.ui_test_add_dialog import Ui_TestAddDialog
@@ -35,8 +31,8 @@ class TestsPage(QWidget, Ui_TestsPage):
         self.addTest_button.clicked.connect(self.addTest_dialog)
         self.delTest_button.clicked.connect(self.delTest)
         self.editTest_button.clicked.connect(self.editTest)
-        self.addArchive_button.clicked.connect(self.add_from_archive)
-        self.saveArchive_button.clicked.connect(self.save_to_archive)
+        self.addArchive_button.clicked.connect(self.loadZIP)
+        self.saveArchive_button.clicked.connect(self.saveZIP)
         self.separateTest_button.clicked.connect(self.separateTest)
         self.tableView.selectionModel().selectionChanged.connect(self.plot)
         
@@ -96,17 +92,17 @@ class TestsPage(QWidget, Ui_TestsPage):
             
     def separateTest(self):
         test = self.getSelectedTest()
-        
-        dialog = SeparateTest_dialog(self, test)
-        if dialog.exec() == QDialog.Accepted:
-            if dialog.new:
-                self.battery.addTest(dialog.name, test.testType, dialog.resultDf)
-            
-            else:
-                test.df = dialog.resultDf
-                                
-        dialog.deleteLater()
-        self.model.refresh()
+        if test:
+            dialog = SeparateTest_dialog(self, test)
+            if dialog.exec() == QDialog.Accepted:
+                if dialog.new:
+                    self.battery.addTest(dialog.name, test.testType, dialog.resultDf)
+                
+                else:
+                    test.df = dialog.resultDf
+                                    
+            dialog.deleteLater()
+            self.model.refresh()
     
     
     def plot(self, selected, deselected):
@@ -120,78 +116,23 @@ class TestsPage(QWidget, Ui_TestsPage):
         curve.plotDf(test.df)
         
     
-    def add_from_archive(self):
-        archive_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Выберите файл",
-            "",  # начальная директория
-            "ZIP архивы (*.zip);;"
-            "Все файлы (*.*)"
-        )
+    def loadZIP(self):
+        thread = workers.LoadZIPWorker(self.battery)
+        workers.loadDialog(self, thread, self.model.refresh)
         
-        if not archive_path:
-            return
         
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                with zipfile.ZipFile(archive_path, 'r') as zipf:
-                    zipf.extractall(tmpdir)
-                    
-                for filename in os.listdir(tmpdir):
-                    file_path = os.path.join(tmpdir, filename)
-                    
-                    message, df, testType = read(file_path, "Стандартные CSV файлы (*.csv)")
-                    if message == "ok":
-                        self.add_test(df, archive_path, testType, filename.replace(".csv", ""))
-                        
-                    else:
-                        QMessageBox.warning(self, "Некорректный файл", message)
-        
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка чтения архива", f"Возникла ошибка: {str(e)}")
-    
-        
-    def save_to_archive(self):
-        if not(self.archiveThread is None):
-            QMessageBox.warning(self, "Сохранение не завершено",
-                        "Дождитесь завершения предыдущего сохранения")
-            return
-        
+    def saveZIP(self):
         if not self.battery.tests:
             QMessageBox.warning(self, "Испытания не добавлены",
                         "Нет испытаний для сохранения")
             return
         
-        default_name = self.battery.name
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Сохранить данные батареи в архив",
-            os.path.join(".", default_name),
-            "ZIP архивы (*.zip);;Все файлы (*)"
-        )
-        
-        if not file_path:
-            return
-        
-        self.archiveThread = ArchiveSaveWorker(file_path, list(self.battery.tests.values()))
-        self.archiveThread.finished.connect(lambda message: self.save_to_archive_finish(message, file_path, self.battery.name))
-        self.archiveThread.start()
-        
-        
-    def save_to_archive_finish(self, message, path, name):
-        self.archiveThread.finished.disconnect()
-        self.archiveThread.deleteLater()
-        self.archiveThread = None
-        if message == "ok":
-            QMessageBox.information(self, "Сохранение завершено",
-                        f"Данные батареи {name} успешно сохранены в архив по пути: {path}")
-            
-        else:
-            QMessageBox.warning(self, "Ошибка при сохранении",
-                        f"Не удалось сохранить данные батареи. Возникла ошибка {message}")
+        tests = self.battery.testsList()
+        thread = workers.SaveZIPWorker(tests)
+        workers.saveDialog(self, thread)
+
           
-        
-            
+                    
 class TestAddDialog(QDialog, Ui_TestAddDialog):
     def __init__(self, parent):
         super().__init__(parent)
@@ -273,38 +214,3 @@ class TestEditDialog(QDialog, Ui_TestEditDialog):
             
     def params(self):
         return self.nameInput.text(), self.typeInput.currentText()
-        
-      
-                
-                
-class ArchiveSaveWorker(QThread):
-    finished = Signal(str)
-    
-    def __init__(self, path, tests):
-        super().__init__()
-        self.path = path
-        self.tests = tests
-        
-    
-    def run(self):
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                for test in self.tests:
-                    test.df.to_csv(os.path.join(tmpdir, f"{test.name}.csv"),
-                              index=False, encoding="utf-8")
-                    
-                with zipfile.ZipFile(
-                        self.path,
-                        "w",
-                        compression=zipfile.ZIP_DEFLATED,
-                        compresslevel=6) as zipf:
-                    
-                    for filename in os.listdir(tmpdir):
-                        zipf.write(os.path.join(tmpdir, filename), filename)
-                
-            
-            self.finished.emit("ok")
-                
-                
-        except Exception as e:
-            self.finished.emit(str(e))

@@ -22,7 +22,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         self.addBattery_button.clicked.connect(self.addBattery_dialog)
         self.delBattery_button.clicked.connect(self.delBattery)
-        self.changeBatteryParams_button.clicked.connect(self.changeBatteryParams)
+        self.editBattery_button.clicked.connect(self.editBattery)
         self.testsOpen_button.clicked.connect(self.testsOpen)
         
         
@@ -60,7 +60,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
             self.model.refresh()
             
             
-    def changeBatteryParams(self):
+    def editBattery(self):
         battery = self.getSelectedBattery()
         if battery:
             dialog = BatteryParamsDialog(self, battery)
@@ -86,6 +86,7 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         if battery:
             self.batterySelected.emit(battery)
         
+   
         
 class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
     def __init__(self, parent, battery=None):
