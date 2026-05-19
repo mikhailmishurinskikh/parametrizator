@@ -42,7 +42,7 @@
     </layout>
    </item>
    <item>
-    <widget class="GraphicsLayoutWidget" name="graphicsView"/>
+    <widget class="PlotView" name="graphicsView"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
@@ -113,9 +113,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphicsLayoutWidget</class>
+   <class>PlotView</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header>plotItems</header>
   </customwidget>
  </customwidgets>
  <resources/>

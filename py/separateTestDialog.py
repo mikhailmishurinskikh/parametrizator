@@ -2,7 +2,6 @@ from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtWidgets import QDialog, QMessageBox
 import pyqtgraph as pg
 
-from plotItems import makeCurve
 import validate
 
 from ui_py.ui_separateTest_dialog import Ui_SeparateTest_dialog
@@ -20,16 +19,13 @@ class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
         self.test = test
         
         self.xlabel = self.test.getXlabel()
-        self.graph = makeCurve(self.test.testType)
-        
-        self.graphicsView.addItem(self.graph, row=0, col=0)
-        self.graph.plotDf(self.test.df)
+        self.graphicsView.plot(self.test.testType, self.test.df)
         
         self.linesEnable = self.test.df[self.test.getXlabel()].is_monotonic_increasing
         
         if self.linesEnable:
             self.lines = Lines(self, self.test)
-            self.lines.addItems(self.graph)
+            self.lines.addItems(self.graphicsView.plotItem)
             
             self.lines.cutDots.connect(self.updateSpinBox)
             self.continious_checkBox.toggled.connect(self.setContinuous)
@@ -75,7 +71,7 @@ class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
         if right:
             dfs.append(self.test.df.iloc[-right:].reset_index())
         
-        self.graph.greyPlot(dfs)
+        self.graphicsView.greyPlot(dfs)
         
     
     def findLeftRightDots(self, leftPos, rightPos):
@@ -223,6 +219,23 @@ class Lines(QObject):
         
         
     def addItems(self, plotItem):
+        self.plotItem = plotItem
         plotItem.addItem(self.region)
         plotItem.addItem(self.leftLine)
         plotItem.addItem(self.rightLine)
+        
+        
+    def deleteLater(self):
+        self.leftLine.sigPositionChanged.disconnect(self.moveLines)
+        self.rightLine.sigPositionChanged.disconnect(self.moveLines)
+        
+        self.plotItem.removeItem(self.region)
+        self.plotItem.removeItem(self.leftLine)
+        self.plotItem.removeItem(self.rightLine)
+        
+        self.region.deleteLater()
+        self.leftLine.deleteLater()
+        self.rightLine.deleteLater()
+        
+        self.plotItem = None
+        super().deleteLater()

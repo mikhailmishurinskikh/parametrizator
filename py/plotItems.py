@@ -1,4 +1,46 @@
 import pyqtgraph as pg
+from PySide6.QtWidgets import QSizePolicy
+
+
+
+class PlotView(pg.GraphicsView):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        
+        self.plotItem = None
+        
+        
+    def plot(self, testType, df):
+        self.clear()
+        if testType == "Исходное испытание":
+            self.plotItem = TimeVoltageCurrentPlotItem()
+            
+        elif testType == "Разрядная кривая":
+            self.plotItem = CurvePlotItem()
+            
+        elif testType == "Норм. разрядная кривая":
+            self.plotItem = NormCurvePlotItem()
+        
+        self.plotItem.plotDf(df)
+        self.setCentralItem(self.plotItem)
+        
+        
+    def greyPlot(self, dfs):
+        self.plotItem.greyPlot(dfs)
+        
+        
+    def clear(self):
+        if self.plotItem:
+            self.plotItem.close()
+            self.plotItem.deleteLater()
+            self.plotItem = None
+            
+    
+    def deleteLater(self):
+        self.clear()
+        return super().deleteLater()
+
 
 
 class TimeVoltageCurrentPlotItem(pg.PlotItem):
@@ -20,6 +62,7 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
     def plotDf(self, df):
         self.right_vb = pg.ViewBox()
         self.right_vb.setParentItem(self)
+        self.right_vb.setParent(self)
         self.getAxis('right').linkToView(self.right_vb)
         self.right_vb.setXLink(self.getViewBox())
         self.getViewBox().sigResized.connect(self.update_right_vb)
@@ -49,12 +92,7 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
         
         
     def greyPlot(self, dfs):
-        for plot in self.greyPlots["left"]:
-            self.removeItem(plot)
-        for plot in self.greyPlots["right"]:
-            self.right_vb.removeItem(plot)
-        
-        self.greyPlots = {"left" : [], "right" : []}
+        self.clearGreyPlots()
         
         for df in dfs:
             self.greyPlots["left"].append(
@@ -72,6 +110,27 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
             )
             self.right_vb.addItem(curve)
             self.greyPlots["right"].append(curve)
+            
+            
+    def clearGreyPlots(self):
+        for plot in self.greyPlots["left"]:
+            self.removeItem(plot)
+            plot.deleteLater()
+        for plot in self.greyPlots["right"]:
+            self.right_vb.removeItem(plot)
+            plot.deleteLater()
+        
+        self.greyPlots = {"left" : [], "right" : []}
+            
+            
+    def close(self):
+        self.getViewBox().sigResized.disconnect(self.update_right_vb)
+        self.sigRangeChanged.disconnect(self.update_right_vb)
+        self.clearGreyPlots()
+        self.right_vb.close()
+        self.removeItem(self.right_vb)
+        self.right_vb = None
+        super().close()
                 
         
 
@@ -99,6 +158,7 @@ class CurvePlotItem(pg.PlotItem):
     def greyPlot(self, dfs):
         for plot in self.greyPlots:
             self.removeItem(plot)
+            plot.deleteLater()
         
         self.greyPlots = []
         
@@ -110,6 +170,14 @@ class CurvePlotItem(pg.PlotItem):
                     pen=pg.mkPen(color='grey', width=2)
                 )
             )
+            
+            
+    def close(self):
+        for plot in self.greyPlots:
+            self.removeItem(plot)
+            plot.deleteLater()
+            
+        super().close()
         
 
     
@@ -137,6 +205,7 @@ class NormCurvePlotItem(pg.PlotItem):
     def greyPlot(self, dfs):
         for plot in self.greyPlots:
             self.removeItem(plot)
+            plot.deleteLater()
         
         self.greyPlots = []
         
@@ -148,16 +217,11 @@ class NormCurvePlotItem(pg.PlotItem):
                     pen=pg.mkPen(color='grey', width=2)
                 )
             )
-        
-        
-def makeCurve(testType):
-    if testType == "Исходное испытание":
-        curve = TimeVoltageCurrentPlotItem()
-        
-    elif testType == "Разрядная кривая":
-        curve = CurvePlotItem()
-        
-    elif testType == "Норм. разрядная кривая":
-        curve = NormCurvePlotItem()
-        
-    return curve
+            
+            
+    def close(self):
+        for plot in self.greyPlots:
+            self.removeItem(plot)
+            plot.deleteLater()
+            
+        super().close()

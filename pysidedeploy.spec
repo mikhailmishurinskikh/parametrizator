@@ -21,7 +21,7 @@ icon = icon.ico
 [python]
 
 # python path
-python_path = C:\Users\admin\Desktop\parametrizator\venv\Scripts\python.exe
+python_path = C:\Users\admin\Desktop\parametrizator\env\Scripts\python.exe
 
 # python packages to install
 packages = Nuitka==2.7.11
@@ -34,6 +34,7 @@ modules = Core,Gui,Widgets
 # qt plugins used by the application. only relevant for desktop deployment
 # for qt plugins used in android application see [android][plugins]
 plugins = generic,iconengines,imageformats,platforms,platformthemes,styles
+qml_files = 
 
 [nuitka]
 
@@ -41,5 +42,5 @@ plugins = generic,iconengines,imageformats,platforms,platformthemes,styles
 mode = standalone
 
 # specify any extra nuitka arguments
-extra_args = --quiet --noinclude-qt-translations --windows-disable-console
+extra_args = --quiet --full-compat --noinclude-qt-translations --include-module=PySide6.QtOpenGL --include-module=PySide6.QtOpenGLWidgets --windows-console-mode=disable
 

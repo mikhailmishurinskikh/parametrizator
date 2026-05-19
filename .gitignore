@@ -8,4 +8,4 @@ ui_py
 example
 deployment
 dist
-venv
+env

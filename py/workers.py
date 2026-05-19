@@ -332,6 +332,7 @@ def saveDialog(parent, thread):
     def on_finished(message):
         thread.deleteLater()
         progress.close()
+        progress.deleteLater()
         if message == "ok":
             QMessageBox.information(parent, "Сохранение успешно",
                                     f"Успешно сохранено по пути: {path}")
@@ -370,6 +371,7 @@ def loadDialog(parent, thread, callback, path=None):
     def on_finished(message):
         thread.deleteLater()
         progress.close()
+        progress.deleteLater()
         if message == "ok":
             QMessageBox.information(parent, "Загрузка успешна",
                                     f"Успешно загружено из файла: {path}")

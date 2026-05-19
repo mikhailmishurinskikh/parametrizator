@@ -8,7 +8,6 @@ pg.setConfigOptions(background='w', foreground='k')
 from readers import read
 from models import TestsModel
 from separateTestDialog import SeparateTest_dialog
-from plotItems import makeCurve
 import workers
 import validate
 
@@ -76,7 +75,7 @@ class TestsPage(QWidget, Ui_TestsPage):
     def delTest(self):
         test = self.getSelectedTest()
         if test:
-            self.battery.deleteTest(test.id)
+            self.battery.delTest(test.id)
             self.model.refresh()
         
         
@@ -105,15 +104,11 @@ class TestsPage(QWidget, Ui_TestsPage):
             self.model.refresh()
     
     
-    def plot(self, selected, deselected):
-        self.graphicsView.clear()
-        
+    def plot(self, selected, deselected):        
         test = self.getSelectedTest(warning=False)
         if not test: return
         
-        curve = makeCurve(test.testType)
-        self.graphicsView.addItem(curve, row=0, col=0)
-        curve.plotDf(test.df)
+        self.graphicsView.plot(test.testType, test.df)
         
     
     def loadZIP(self):
@@ -166,11 +161,7 @@ class TestAddDialog(QDialog, Ui_TestAddDialog):
             else:
                 QMessageBox.warning(self, "Некорректный файл", message)
                 
-            self.graphicsView.clear()
-            
-            curve = makeCurve(testType)
-            self.graphicsView.addItem(curve, row=0, col=0)
-            curve.plotDf(df)
+            self.graphicsView.plot(testType, df)
                 
             self.fileInput.setText(file_path)
             self.Ok.setEnabled(True)

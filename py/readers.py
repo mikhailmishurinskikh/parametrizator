@@ -31,8 +31,6 @@ def read(file, filter):
     return message, data, testType
 
 
-
-
 def ndax(file):
     try:
         columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
