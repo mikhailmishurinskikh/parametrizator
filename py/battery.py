@@ -208,14 +208,14 @@ def calcQ(test, battery, xlabel, ylabel=None):
 def calcWh(test, battery, xlabel):
     if xlabel == "Q":
         if "W,Wh" in test.df.columns:
-            x = f"{test.df["W,Wh"].max():.2f}"
+            x = f"{test.df['W,Wh'].max():.2f}"
             
         else:
             x = "-"
             
     elif xlabel == "Q/m":
         if "W,Wh" in test.df.columns:
-            x = f"{test.df["W,Wh"].max() / (battery.mass/1000):.2f}"
+            x = f"{test.df['W,Wh'].max() / (battery.mass/1000):.2f}"
             
         else:
             x = "-"

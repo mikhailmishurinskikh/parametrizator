@@ -42,5 +42,10 @@ qml_files =
 mode = standalone
 
 # specify any extra nuitka arguments
-extra_args = --quiet --full-compat --noinclude-qt-translations --include-module=PySide6.QtOpenGL --include-module=PySide6.QtOpenGLWidgets --windows-console-mode=disable
+extra_args = --noinclude-qt-translations
+	--include-module=PySide6.QtOpenGL
+	--include-module=PySide6.QtOpenGLWidgets
+	--include-module=matplotlib.backends.backend_pdf
+	--windows-console-mode=disable
+	--quiet
 

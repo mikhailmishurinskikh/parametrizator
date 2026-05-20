@@ -185,6 +185,7 @@ def csvNdax(file):
             data["Q,Ah"] = data["Capacity(Ah)"].abs()
             data["W,Wh"] = data["Energy(Wh)"].abs()
             data = data[columns]
+            message = "ok"
         
         else:
             message = f"В файле {file} нет одного из столбцов {required_cols}"
