@@ -55,13 +55,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         
     def saveAllToBPA(self):
-        thread = workers.SaveBPAWorker(self.batteriesPage.batteries.batteriesList())
+        thread = workers.SaveBPAWorker(self.batteriesManager.batteriesList())
         workers.saveDialog(self, thread)
     
     
     def loadAllFromBPA(self):
         self.stacked_widget.setCurrentIndex(0)
-        thread = workers.LoadBPAWorker(window.batteriesPage.batteries)
+        thread = workers.LoadBPAWorker(window.batteriesManager)
         workers.loadDialog(self, thread, self.batteriesPage.fillTable)
 
 
