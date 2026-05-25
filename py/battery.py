@@ -1,20 +1,3 @@
-class BATTERY_COLUMNS:
-    NAME = 0
-    NUM_CELLS = 1
-    MASS = 2
-    
-    NCOLS = 3
-    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г"]
-    
-    
-class TEST_COLUMNS:
-    NAME = 0
-    TYPE = 1
-    
-    NCOLS = 2
-    HEADERS = ["Имя испытания", "Тип испытания"]
-
-
 class Test:
     def __init__(self, name, testType, df, test_id):
         self.df = df.reset_index(drop=True)
@@ -135,14 +118,12 @@ class BatteriesManager:
     
     
     def curves(self):
-        curves = {}
+        curves = []
         for battery in self.batteries.values():
-            batteryCurves = {"tests" : {}, "battery" : battery}
-            for test in battery.tests.values():
-                if test.testType in ["Разрядная кривая", "Норм. разрядная кривая"]:
-                    batteryCurves["tests"][test.id] = test
-            
-            curves[battery.id] = batteryCurves
+            curves += [
+                (battery, test) for test in battery.tests.values()
+                if test.testType in ["Разрядная кривая", "Норм. разрядная кривая"]
+            ]
         return curves
     
     
@@ -154,21 +135,6 @@ class BatteriesManager:
         self.batteries.clear()
         self.batteries_counter = 0
         
-    
-    def sort(self, column, reverse):
-        if column == BATTERY_COLUMNS.NAME:
-            return sorted(list(self.batteries.values()),
-                          key=lambda battery: battery.name,
-                          reverse=reverse)
-        elif column == BATTERY_COLUMNS.NUM_CELLS:
-            return sorted(list(self.batteries.values()),
-                          key=lambda battery: battery.numCells,
-                          reverse=reverse)
-        elif column == BATTERY_COLUMNS.MASS:
-            return sorted(list(self.batteries.values()),
-                          key=lambda battery: battery.mass,
-                          reverse=reverse)
-    
 
 
 def calcQ(test, battery, xlabel, ylabel=None):

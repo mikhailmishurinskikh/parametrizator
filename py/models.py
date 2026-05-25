@@ -1,5 +1,39 @@
-from battery import BATTERY_COLUMNS, TEST_COLUMNS
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+
+from battery import calcQ, calcWh
+
+
+class BATTERY_COLUMNS:
+    NAME = 0
+    NUM_CELLS = 1
+    MASS = 2
+    
+    NCOLS = 3
+    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г"]
+    
+    
+class TEST_COLUMNS:
+    NAME = 0
+    TYPE = 1
+    
+    NCOLS = 2
+    HEADERS = ["Имя испытания", "Тип испытания"]
+    
+    
+class CURVES_COLUMNS:
+    BATTERY = 0
+    NAME = 1
+    TYPE = 2
+    CAPACITY = 3
+    ENERGY_CAPACITY = 4
+    CHECK = 5
+    
+    NCOLS = 6
+    HEADERS = {
+        "Q" : ["Батарея", "Испытание", "Тип кривой", "Емкость, Ач", "Энергоемкость, Вт ч", "Выбрано"],
+        "Q/m" : ["Батарея", "Испытание", "Тип кривой", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг", "Выбрано"]
+    }
+
 
 
 class BatteriesModel(QAbstractTableModel):
@@ -64,15 +98,29 @@ class BatteriesModel(QAbstractTableModel):
         self.sortColumn = column
         self.sortOrder = order
         
-        self.batteries = self.batteriesManager.sort(column, (order == Qt.DescendingOrder))
+        batteriesList = self.batteriesManager.batteriesList()
+        reverse = (order == Qt.DescendingOrder)
+        
+        if column == BATTERY_COLUMNS.NAME:
+            self.batteries =  sorted(batteriesList,
+                          key=lambda battery: battery.name,
+                          reverse=reverse)
+        elif column == BATTERY_COLUMNS.NUM_CELLS:
+            self.batteries = sorted(batteriesList,
+                          key=lambda battery: battery.numCells,
+                          reverse=reverse)
+        elif column == BATTERY_COLUMNS.MASS:
+            self.batteries = sorted(batteriesList,
+                          key=lambda battery: battery.mass,
+                          reverse=reverse)
+        
         self.layoutChanged.emit()
     
     
     def refresh(self):
         self.beginResetModel()
-        self.batteries = self.batteriesManager.sort(
-            self.sortColumn, (self.sortOrder == Qt.DescendingOrder)
-        )
+        self.batteries = self.batteriesManager.batteriesList()
+        self.sort(self.sortColumn, self.sortOrder)
         self.endResetModel()
         
         
@@ -136,4 +184,150 @@ class TestsModel(QAbstractTableModel):
     def refresh(self):
         self.beginResetModel()
         self.tests = list(self.battery.tests.values())
+        self.endResetModel()
+        
+        
+        
+class CurvesModel(QAbstractTableModel):
+    def __init__(self, manager, xlabel):
+        super().__init__()
+        
+        self.sortColumn = CURVES_COLUMNS.BATTERY
+        self.sortOrder = Qt.SortOrder.DescendingOrder
+        
+        self.batteriesManager = manager
+        self.curves = []
+        self.xlabel = xlabel
+        
+        self.selectedTests = set()
+        
+        
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.curves)
+    
+    
+    def columnCount(self, parent=QModelIndex()):
+        return CURVES_COLUMNS.NCOLS
+            
+            
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
+        
+        row, col = index.row(), index.column()
+        battery, test = self.curves[row]
+        
+        if role == Qt.DisplayRole:
+            if col == CURVES_COLUMNS.BATTERY:
+                return battery.name
+            elif col == CURVES_COLUMNS.NAME:
+                return test.name
+            elif col == CURVES_COLUMNS.TYPE:
+                return test.testType
+            elif col == CURVES_COLUMNS.CAPACITY:
+                return f"{calcQ(test, battery, self.xlabel).max():.2f}"
+            elif col == CURVES_COLUMNS.ENERGY_CAPACITY:
+                return calcWh(test, battery, self.xlabel)
+            elif col == CURVES_COLUMNS.CHECK:
+                return ""
+        
+        elif role == Qt.CheckStateRole:
+            if col == CURVES_COLUMNS.CHECK:
+                return Qt.Checked if self.curves[row] in self.selectedTests else Qt.Unchecked
+            return None
+        
+        
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role != Qt.DisplayRole:
+            return None
+        
+        if orientation == Qt.Orientation.Horizontal:
+            headers = CURVES_COLUMNS.HEADERS[self.xlabel]
+            return headers[section] if section < len(headers) else None
+        
+        
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.NoItemFlags
+        
+        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        
+        if index.column() == CURVES_COLUMNS.CHECK:
+            flags |= Qt.ItemIsUserCheckable
+            flags |= Qt.ItemIsEditable
+        
+        return flags
+    
+    
+    def setData(self, index, value, role=Qt.EditRole):
+        if not index.isValid():
+            return False
+        
+        if index.column() == CURVES_COLUMNS.CHECK and role == Qt.CheckStateRole:
+            row = index.row()
+            
+            if Qt.CheckState(value) == Qt.Checked:
+                self.selectedTests.add(self.curves[row])
+            else:
+                self.selectedTests.discard(self.curves[row])
+            
+            self.dataChanged.emit(index, index)
+            return True
+        
+        return False
+    
+    
+    def setXlabel(self, xlabel):
+        self.beginResetModel()
+        self.xlabel = xlabel
+        self.endResetModel()
+        
+        
+    def getSelected(self):
+        return list(self.selectedTests)
+    
+    
+    def sort(self, column, order):        
+        self.sortColumn = column
+        self.sortOrder = order
+        
+        reverse = (order == Qt.DescendingOrder)
+        
+        if column == CURVES_COLUMNS.BATTERY:
+            self.curves = sorted(self.curves,
+                            key=lambda item: item[0].name,
+                            reverse=reverse)
+        elif column == CURVES_COLUMNS.CAPACITY:
+            self.curves = sorted(self.curves,
+                            key=lambda item: calcQ(item[1], item[0], self.xlabel).max(),
+                            reverse=reverse)
+        elif column == CURVES_COLUMNS.ENERGY_CAPACITY:
+            self.curves = sorted(self.curves,
+                            key=self.sortWhKey,
+                            reverse=reverse)
+        elif column == CURVES_COLUMNS.CHECK:
+            self.curves = sorted(self.curves,
+                            key=lambda item: (item in self.selectedTests),
+                            reverse=reverse)
+        else: return
+        
+        
+        self.layoutChanged.emit()
+        
+        
+    def sortWhKey(self, item):
+        battery = item[0]
+        test = item[1]
+        
+        Wh_str = calcWh(test, battery, self.xlabel)
+        if Wh_str == "-":
+            return -1
+        else:
+            return float(Wh_str)
+        
+        
+    def refresh(self):
+        self.beginResetModel()
+        self.curves = self.batteriesManager.curves()
+        self.sort(self.sortColumn, self.sortOrder)
         self.endResetModel()

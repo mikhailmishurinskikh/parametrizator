@@ -176,8 +176,6 @@ class CurvePlotItem(pg.PlotItem):
         for plot in self.greyPlots:
             self.removeItem(plot)
             plot.deleteLater()
-        
-        print("close")
         super().close()
         
 

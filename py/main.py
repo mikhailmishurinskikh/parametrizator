@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget)
 
 from ui_py.ui_main_window import Ui_MainWindow
 
+from battery import BatteriesManager
 from testsPage import TestsPage
 from batteriesPage import BatteriesPage
 from curvesPage import CurvesPage
@@ -22,8 +23,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
         
-        self.batteriesPage = BatteriesPage(self)
-        self.curvesPage = CurvesPage(self)
+        self.batteriesManager = BatteriesManager()
+        
+        self.batteriesPage = BatteriesPage(self, self.batteriesManager)
+        self.curvesPage = CurvesPage(self, self.batteriesManager)
         self.testsPage = TestsPage(self)
             
         self.stacked_widget.addWidget(self.batteriesPage)
@@ -47,7 +50,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         
     def curvesPageOpen(self):
-        self.curvesPage.updatePage(self.batteriesPage.batteries)
+        self.curvesPage.updatePage()
         self.stacked_widget.setCurrentIndex(1)
         
         
@@ -69,7 +72,7 @@ if __name__ == "__main__":
     window.show()
     
     if len(sys.argv) > 1:
-        thread = workers.LoadBPAWorker(window.batteriesPage.batteries)
+        thread = workers.LoadBPAWorker(window.batteriesManager)
         workers.loadDialog(window, thread, window.batteriesPage.fillTable, sys.argv[1])
         
     sys.exit(app.exec())

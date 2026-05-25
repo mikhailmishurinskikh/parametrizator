@@ -3,7 +3,6 @@ from PySide6.QtWidgets import (QWidget, QDialog, QMessageBox,
                                QHeaderView, QTableView)
 
 import validate
-from battery import BatteriesManager
 from models import BatteriesModel
 
 from ui_py.ui_batteries import Ui_BatteriesPage
@@ -13,11 +12,11 @@ from ui_py.ui_battery_params import Ui_BatteryParamsDialog
 class BatteriesPage(QWidget, Ui_BatteriesPage):
     batterySelected = Signal(object)
     
-    def __init__(self, parent):
+    def __init__(self, parent, batteriesManager):
         super().__init__(parent)
         self.setupUi(self)
         
-        self.batteries = BatteriesManager()
+        self.batteriesManager = batteriesManager
         self.initTable()
         
         self.addBattery_button.clicked.connect(self.addBattery_dialog)
@@ -27,13 +26,12 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         
     def initTable(self):
-        self.model = BatteriesModel(self.batteries)
+        self.model = BatteriesModel(self.batteriesManager)
         self.tableView.setModel(self.model)
         
         self.tableView.setSelectionBehavior(QTableView.SelectRows)
         self.tableView.setSelectionMode(QTableView.SingleSelection)
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tableView.setSortingEnabled(True)
 
         
     def getSelectedBattery(self):
@@ -44,19 +42,19 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
             return None
         row = selection[0].row()
         batteryId = self.model.getId(row)
-        battery = self.batteries.get(batteryId)
+        battery = self.batteriesManager.get(batteryId)
         return battery
                 
         
     def addBattery(self, name, numCells, mass):
-        self.batteries.add(name, numCells, mass)
+        self.batteriesManager.add(name, numCells, mass)
         self.model.refresh()
         
         
     def delBattery(self):
         battery = self.getSelectedBattery()
         if battery:
-            self.batteries.delete(battery.id)
+            self.batteriesManager.delete(battery.id)
             self.model.refresh()
             
             
@@ -124,7 +122,7 @@ class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
             
         message = validate.BATTERY_PARAMS(
             *self.params(),
-            self.parent().batteries,
+            self.parent().batteriesManager,
             oldName
         )
         
