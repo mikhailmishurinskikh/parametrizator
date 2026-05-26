@@ -104,8 +104,7 @@ class BatteriesManager:
         
     def add(self, name, numCells, mass):
         battery = Battery(name, numCells, mass, self.batteries_counter)
-        self.batteries[self.batteries_counter] = battery
-        self.batteries_counter += 1
+        self.addBattery(battery)
         return battery
         
         
@@ -134,6 +133,11 @@ class BatteriesManager:
     def clear(self):
         self.batteries.clear()
         self.batteries_counter = 0
+        
+    
+    def addBattery(self, battery):
+        self.batteries[self.batteries_counter] = battery
+        self.batteries_counter += 1
         
 
 

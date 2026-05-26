@@ -26,12 +26,12 @@ class CURVES_COLUMNS:
     TYPE = 2
     CAPACITY = 3
     ENERGY_CAPACITY = 4
-    CHECK = 5
+    LABEL = 5
     
     NCOLS = 6
     HEADERS = {
-        "Q" : ["Батарея", "Испытание", "Тип кривой", "Емкость, Ач", "Энергоемкость, Вт ч", "Выбрано"],
-        "Q/m" : ["Батарея", "Испытание", "Тип кривой", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг", "Выбрано"]
+        "Q" : ["Батарея", "Испытание", "Тип кривой", "Емкость, Ач", "Энергоемкость, Вт ч", "Имя в легенде"],
+        "Q/m" : ["Батарея", "Испытание", "Тип кривой", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг", "Имя в легенде"]
     }
 
 
@@ -199,6 +199,7 @@ class CurvesModel(QAbstractTableModel):
         self.curves = []
         self.xlabel = xlabel
         
+        self.labels = {}
         self.selectedTests = set()
         
         
@@ -228,11 +229,14 @@ class CurvesModel(QAbstractTableModel):
                 return f"{calcQ(test, battery, self.xlabel).max():.2f}"
             elif col == CURVES_COLUMNS.ENERGY_CAPACITY:
                 return calcWh(test, battery, self.xlabel)
-            elif col == CURVES_COLUMNS.CHECK:
-                return ""
+            elif col == CURVES_COLUMNS.LABEL:
+                if (battery, test) in self.labels.keys():
+                    return self.labels[(battery, test)]
+                else:
+                    return "По умолч."
         
         elif role == Qt.CheckStateRole:
-            if col == CURVES_COLUMNS.CHECK:
+            if col == CURVES_COLUMNS.BATTERY:
                 return Qt.Checked if self.curves[row] in self.selectedTests else Qt.Unchecked
             return None
         
@@ -252,8 +256,10 @@ class CurvesModel(QAbstractTableModel):
         
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         
-        if index.column() == CURVES_COLUMNS.CHECK:
+        if index.column() == CURVES_COLUMNS.BATTERY:
             flags |= Qt.ItemIsUserCheckable
+            
+        if index.column() == CURVES_COLUMNS.LABEL:
             flags |= Qt.ItemIsEditable
         
         return flags
@@ -263,7 +269,7 @@ class CurvesModel(QAbstractTableModel):
         if not index.isValid():
             return False
         
-        if index.column() == CURVES_COLUMNS.CHECK and role == Qt.CheckStateRole:
+        if index.column() == CURVES_COLUMNS.BATTERY and role == Qt.CheckStateRole:
             row = index.row()
             
             if Qt.CheckState(value) == Qt.Checked:
@@ -272,6 +278,10 @@ class CurvesModel(QAbstractTableModel):
                 self.selectedTests.discard(self.curves[row])
             
             self.dataChanged.emit(index, index)
+            return True
+        
+        if index.column() == CURVES_COLUMNS.LABEL and role == Qt.EditRole:
+            self.labels[self.curves[index.row()]] = value
             return True
         
         return False
@@ -297,20 +307,23 @@ class CurvesModel(QAbstractTableModel):
             self.curves = sorted(self.curves,
                             key=lambda item: item[0].name,
                             reverse=reverse)
+        elif column == CURVES_COLUMNS.NAME:
+            self.curves = sorted(self.curves,
+                            key=lambda item: item[1].name,
+                            reverse=reverse)
+        elif column == CURVES_COLUMNS.TYPE:
+            self.curves = sorted(self.curves,
+                            key=lambda item: item[1].testType,
+                            reverse=reverse)
         elif column == CURVES_COLUMNS.CAPACITY:
             self.curves = sorted(self.curves,
                             key=lambda item: calcQ(item[1], item[0], self.xlabel).max(),
-                            reverse=reverse)
+                            reverse=reverse)        
         elif column == CURVES_COLUMNS.ENERGY_CAPACITY:
             self.curves = sorted(self.curves,
                             key=self.sortWhKey,
                             reverse=reverse)
-        elif column == CURVES_COLUMNS.CHECK:
-            self.curves = sorted(self.curves,
-                            key=lambda item: (item in self.selectedTests),
-                            reverse=reverse)
         else: return
-        
         
         self.layoutChanged.emit()
         
@@ -326,8 +339,38 @@ class CurvesModel(QAbstractTableModel):
             return float(Wh_str)
         
         
+    def setCheck(self, index):
+        checkItem = self.index(index.row(), CURVES_COLUMNS.BATTERY)
+        state = Qt.CheckState(checkItem.data(Qt.CheckStateRole)) == Qt.Checked
+        newState = Qt.Unchecked if state else Qt.Checked
+        self.setData(checkItem, newState, Qt.CheckStateRole)
+        
+        
+    def selectAll(self):
+        for row in range(self.rowCount()):
+            index = self.index(row, CURVES_COLUMNS.BATTERY)
+            self.setData(index, Qt.Checked, Qt.CheckStateRole)
+            
+            
+    def deselectAll(self):
+        self.beginResetModel()
+        self.labels = {}
+        for row in range(self.rowCount()):
+            index = self.index(row, CURVES_COLUMNS.BATTERY)
+            self.setData(index, Qt.Unchecked, Qt.CheckStateRole)
+        self.endResetModel()
+            
+            
+    def showChecked(self):
+        self.beginResetModel()
+        self.curves = [item for item in self.curves if item in self.selectedTests]
+        self.sort(self.sortColumn, self.sortOrder)
+        self.endResetModel()
+        
+        
     def refresh(self):
         self.beginResetModel()
+        self.labels = {}
         self.curves = self.batteriesManager.curves()
         self.sort(self.sortColumn, self.sortOrder)
         self.endResetModel()

@@ -244,8 +244,8 @@ class LoadBPAWorker(QThread):
     
     def __init__(self, batteriesManager):
         super().__init__()
-        self.batteries = batteriesManager
-        self.batteries.clear()
+        self.batteriesManager = batteriesManager
+        self.newBatteries = BatteriesManager()
         
         self.dialogName = "Загрузить архив BPA"
         self.progressName = "Загрузка BPA архива..."
@@ -271,9 +271,10 @@ class LoadBPAWorker(QThread):
                     progress_value = int((i + 1) / total * 100)
                     self.progress.emit(progress_value)
                     
-                    if self.checkInterrupt(): return
-                    
-                self.finished.emit("ok")
+                    if self.checkInterrupt(): return    
+            
+            message = self.merge()     
+            self.finished.emit(message)
                 
         except Exception as e:
             self.finished.emit(str(e))
@@ -283,7 +284,7 @@ class LoadBPAWorker(QThread):
         with open(os.path.join(battery_path, 'params.json'), 'r', encoding='utf-8') as f:
             battery_params = json.load(f)
         
-        battery = self.batteries.add(
+        battery = self.newBatteries.add(
             battery_params['name'],
             battery_params['numCells'],
             battery_params['mass']
@@ -300,6 +301,28 @@ class LoadBPAWorker(QThread):
             if self.checkInterrupt(): return False
         
         return True
+    
+    
+    def merge(self):
+        errorCounter = 0
+        okCouter = 0
+        for battery in self.newBatteries.batteriesList():
+            message = validate.BATTERY_PARAMS(
+                battery.name, battery.numCells, battery.mass,
+                self.batteriesManager
+            )
+            if message == "ok":
+                self.batteriesManager.addBattery(battery)
+                okCouter += 1
+            else:
+                errorCounter += 1
+                
+        if errorCounter > 0:
+            return f"Загружено {okCouter} батарей. Не удалось загрузить {errorCounter} батарей."
+        else:
+            return "ok"
+                
+                
             
             
     def checkInterrupt(self):
@@ -308,8 +331,8 @@ class LoadBPAWorker(QThread):
             return True
         
         return False
-            
-            
+        
+        
     
 def saveDialog(parent, thread):
     path, _ = QFileDialog.getSaveFileName(
@@ -381,6 +404,7 @@ def loadDialog(parent, thread, callback, path=None):
             QMessageBox.warning(parent, "Ошибка загрузки", message)
             
         callback()
+            
             
     thread.progress.connect(progress.setValue)
     thread.finished.connect(on_finished)

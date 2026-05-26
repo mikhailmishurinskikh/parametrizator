@@ -75,8 +75,14 @@ class SeparateTest_dialog(QDialog, Ui_SeparateTest_dialog):
         
     
     def findLeftRightDots(self, leftPos, rightPos):
+        all = len(self.test.df)
         left = len(self.test.df[self.test.df[self.xlabel] < leftPos])
+        if left >= all:
+            left = all - 1
+        
         right = len(self.test.df[self.test.df[self.xlabel] > rightPos])
+        if right >= all:
+            right = all - 1
         return left, right
         
         

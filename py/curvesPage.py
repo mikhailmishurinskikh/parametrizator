@@ -20,9 +20,15 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         
         self.initTable(batteriesManager)
         
+        self.selectAll_button.clicked.connect(self.model.selectAll)
+        self.deselectAll_button.clicked.connect(self.model.deselectAll)
+        self.showChecked_button.clicked.connect(self.showChecked)
+        
         self.plot_button.clicked.connect(self.plot)
         self.save_button.clicked.connect(self.save)
         self.settings_button.clicked.connect(self.canvas.settingsDialog)
+        
+        self.tableView.activated.connect(self.model.setCheck)
         
         self.oX_comboBox.currentTextChanged.connect(self.model.setXlabel)
         
@@ -30,6 +36,8 @@ class CurvesPage(QWidget, Ui_CurvesPage):
     def updatePage(self):
         self.canvas.clearAll(draw=True)
         self.model.refresh()
+        self.model.deselectAll()
+        self.showChecked_button.setText("Показать только выбранное")
         
         
     def initTable(self, batteriesManager):
@@ -40,6 +48,15 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.tableView.setSelectionBehavior(QTableView.SelectRows)
         self.tableView.setSelectionMode(QTableView.SingleSelection)
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        
+    def showChecked(self):
+        if self.showChecked_button.text() == "Показать только выбранное":
+            self.showChecked_button.setText("Показать все")
+            self.model.showChecked()
+        elif self.showChecked_button.text() == "Показать все":
+            self.showChecked_button.setText("Показать только выбранное")
+            self.model.refresh()
         
         
     def plot(self):
@@ -55,7 +72,11 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.canvas.setSettings(xlabel, ylabel)
         
         for battery, test in selected:
-            self.canvas.plot(test, battery)
+            if (battery, test) in self.model.labels:
+                label = self.model.labels[(battery, test)]
+            else:
+                label = f"{battery.name} {test.name}"
+            self.canvas.plot(test, battery, label)
         
         self.canvas.finishPlot()
         

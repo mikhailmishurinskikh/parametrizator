@@ -27,6 +27,7 @@ DEFAULT_SETTINGS = {
     'Q/m': "Уд. ёмкость батареи, Ач/кг",
     'V на аккум.': "Напряжение на один аккумулятор, В",
     'title': "",
+    'legend': True,
     'size': "По умолчанию",
     'default_ticksX': True,
     'default_ticksY': True
@@ -67,12 +68,11 @@ class CurvesCanvas(FigureCanvas):
             self.ax.set_title(self.settings["title"])
         
     
-    def plot(self, test, battery):
+    def plot(self, test, battery, label):
         x, y = calcQ(test, battery, self.xlabel, self.ylabel)
 
         self.ax.plot(x, y,
-                     label=f"{battery.name}\n"
-                     f"{test.name}")
+                     label=label)
        
         
     def finishPlot(self, empty=False):
@@ -80,8 +80,10 @@ class CurvesCanvas(FigureCanvas):
             self.clearAll(draw=True)
             self.graphEnabled = False
             return
+        
+        if self.settings["legend"]:
+            self.ax.legend()
             
-        self.ax.legend()
         if not self.settings["default_ticksX"]:
             x_min, x_max = self.ax.get_xlim()
             xstep = self.settings["xstep"]
@@ -156,6 +158,7 @@ class GraphParamsDialog(QDialog, Ui_GraphParams):
         self.Vcelllabel_input.setText(settings["V на аккум."])
         self.title_input.setText(settings["title"])
         self.size_comboBox.setCurrentText(settings["size"])
+        self.legend_checkBox.setChecked(settings["legend"])
         if settings["default_ticksX"]:
             self.stepX_checkBox.setChecked(True)
             self.stepX_input.setValue(0)
@@ -195,6 +198,7 @@ class GraphParamsDialog(QDialog, Ui_GraphParams):
             'Q/m': self.Qmlabel_input.text(),
             'V на аккум.': self.Vcelllabel_input.text(),
             'title': self.title_input.text(),
+            'legend': self.legend_checkBox.isChecked(),
             "size" : self.size_comboBox.currentText(),
             "default_ticksX" : self.stepX_checkBox.isChecked(),
             "default_ticksY" : self.stepY_checkBox.isChecked(),

@@ -105,7 +105,7 @@ def txt(file):
             message = "ok"
             
         else:
-            message = "В файле {file} нет одного из столбцов {required_cols}"
+            message = f"В файле {file} нет одного из столбцов {required_cols}"
             
     except Exception as e:
         message = str(e)
@@ -129,7 +129,7 @@ def normCurves(file):
             message = "ok"
         
         else:
-            message = f"Файл должен быть стандартного формата как в таблице учёта"
+            message = "Файл должен быть стандартного формата как в таблице учёта"
     
     except Exception as e:
         message = str(e)

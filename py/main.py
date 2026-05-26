@@ -61,7 +61,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def loadAllFromBPA(self):
         self.stacked_widget.setCurrentIndex(0)
-        thread = workers.LoadBPAWorker(window.batteriesManager)
+        thread = workers.LoadBPAWorker(self.batteriesManager)
         workers.loadDialog(self, thread, self.batteriesPage.fillTable)
 
 

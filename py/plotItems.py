@@ -114,9 +114,11 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
             
     def clearGreyPlots(self):
         for plot in self.greyPlots["left"]:
+            plot.clear()
             self.removeItem(plot)
             plot.deleteLater()
         for plot in self.greyPlots["right"]:
+            plot.clear()
             self.right_vb.removeItem(plot)
             plot.deleteLater()
         
