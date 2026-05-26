@@ -245,11 +245,13 @@ class LoadBPAWorker(QThread):
     def __init__(self, batteriesManager):
         super().__init__()
         self.batteriesManager = batteriesManager
-        self.newBatteries = BatteriesManager()
+        self.newBatteries = []
         
         self.dialogName = "Загрузить архив BPA"
         self.progressName = "Загрузка BPA архива..."
         self.filter = "BPA архивы (*.bpa);;Все файлы (*.*)"
+        
+        self.errorCounter = 0
         
         
     def setPath(self, path):
@@ -273,8 +275,16 @@ class LoadBPAWorker(QThread):
                     
                     if self.checkInterrupt(): return    
             
-            message = self.merge()     
-            self.finished.emit(message)
+            for battery in self.newBatteries:
+                self.batteriesManager.addBattery(battery)
+                
+            if self.errorCounter > 0:
+                self.finished.emit(f"Загружено {len(self.newBatteries)} батарей.\n"
+                                   f"Не удалось загрузить {self.errorCounter} батарей.")
+            else:
+                self.finished.emit("ok")
+            
+            
                 
         except Exception as e:
             self.finished.emit(str(e))
@@ -282,48 +292,34 @@ class LoadBPAWorker(QThread):
     
     def load_battery(self, battery_path):
         with open(os.path.join(battery_path, 'params.json'), 'r', encoding='utf-8') as f:
-            battery_params = json.load(f)
+            params = json.load(f)
         
-        battery = self.newBatteries.add(
-            battery_params['name'],
-            battery_params['numCells'],
-            battery_params['mass']
+        message = validate.BATTERY_PARAMS(
+                params["name"], params["numCells"], params["mass"],
+                self.batteriesManager
         )
         
-        with open(os.path.join(battery_path, 'tests_metadata.json'), 'r', encoding='utf-8') as f:
-            tests_meta = json.load(f)
-        
-        for test_meta in tests_meta:
-            parquet_path = os.path.join(battery_path, f"{test_meta['id']}.parquet")
-            df = pd.read_parquet(parquet_path)
-            battery.addTest(test_meta["name"], test_meta["testType"], df)
+        if message == "ok":    
+            battery = Battery(
+                params['name'], params['numCells'], params['mass']
+            )
+            self.newBatteries.append(battery)
             
-            if self.checkInterrupt(): return False
+            with open(os.path.join(battery_path, 'tests_metadata.json'), 'r', encoding='utf-8') as f:
+                tests_meta = json.load(f)
+            
+            for test_meta in tests_meta:
+                parquet_path = os.path.join(battery_path, f"{test_meta['id']}.parquet")
+                df = pd.read_parquet(parquet_path)
+                battery.addTest(test_meta["name"], test_meta["testType"], df)
+                
+                if self.checkInterrupt(): return False
+            
+        else:
+            self.errorCounter += 1
         
         return True
     
-    
-    def merge(self):
-        errorCounter = 0
-        okCouter = 0
-        for battery in self.newBatteries.batteriesList():
-            message = validate.BATTERY_PARAMS(
-                battery.name, battery.numCells, battery.mass,
-                self.batteriesManager
-            )
-            if message == "ok":
-                self.batteriesManager.addBattery(battery)
-                okCouter += 1
-            else:
-                errorCounter += 1
-                
-        if errorCounter > 0:
-            return f"Загружено {okCouter} батарей. Не удалось загрузить {errorCounter} батарей."
-        else:
-            return "ok"
-                
-                
-            
             
     def checkInterrupt(self):
         if self.isInterruptionRequested():

@@ -7,9 +7,10 @@ class BATTERY_COLUMNS:
     NAME = 0
     NUM_CELLS = 1
     MASS = 2
+    TEST_COUNT = 3
     
-    NCOLS = 3
-    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г"]
+    NCOLS = 4
+    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г", "Число испытаний"]
     
     
 class TEST_COLUMNS:
@@ -40,15 +41,14 @@ class BatteriesModel(QAbstractTableModel):
     def __init__(self, batteries_manager):
         super().__init__()
         self.batteriesManager = batteries_manager
+        self.batteriesIds = batteries_manager.ids()
         
         self.sortColumn = BATTERY_COLUMNS.NAME
         self.sortOrder = Qt.SortOrder.DescendingOrder
         
-        self.refresh()
-        
         
     def rowCount(self, parent=QModelIndex()):
-        return len(self.batteries)
+        return len(self.batteriesIds)
     
     
     def columnCount(self, parent=QModelIndex()):
@@ -64,7 +64,8 @@ class BatteriesModel(QAbstractTableModel):
         
         row, col = index.row(), index.column()
         
-        battery = self.batteries[row]
+        batteryId = self.batteriesIds[row]
+        battery = self.batteriesManager.get(batteryId)
         
         if col == BATTERY_COLUMNS.NAME:
             return battery.name
@@ -72,6 +73,8 @@ class BatteriesModel(QAbstractTableModel):
             return f"{battery.numCells}"
         elif col == BATTERY_COLUMNS.MASS:
             return f"{battery.mass:.2f}"
+        elif col == BATTERY_COLUMNS.TEST_COUNT:
+            return f"{battery.testCount()}"
         
     
     def headerData(self, section, orientation, role=Qt.DisplayRole):
@@ -90,28 +93,31 @@ class BatteriesModel(QAbstractTableModel):
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled
     
     
-    def getId(self, row):
-        return self.batteries[row].id
+    def getBatteryId(self, row):
+        return self.batteriesIds[row]
     
     
     def sort(self, column, order):        
         self.sortColumn = column
         self.sortOrder = order
         
-        batteriesList = self.batteriesManager.batteriesList()
         reverse = (order == Qt.DescendingOrder)
         
         if column == BATTERY_COLUMNS.NAME:
-            self.batteries =  sorted(batteriesList,
-                          key=lambda battery: battery.name,
+            self.batteriesIds =  sorted(self.batteriesIds,
+                          key=lambda batteryId: self.batteriesManager.get(batteryId).name,
                           reverse=reverse)
         elif column == BATTERY_COLUMNS.NUM_CELLS:
-            self.batteries = sorted(batteriesList,
-                          key=lambda battery: battery.numCells,
+            self.batteriesIds = sorted(self.batteriesIds,
+                          key=lambda batteryId: self.batteriesManager.get(batteryId).numCells,
                           reverse=reverse)
         elif column == BATTERY_COLUMNS.MASS:
-            self.batteries = sorted(batteriesList,
-                          key=lambda battery: battery.mass,
+            self.batteriesIds = sorted(self.batteriesIds,
+                          key=lambda batteryId: self.batteriesManager.get(batteryId).mass,
+                          reverse=reverse)
+        elif column == BATTERY_COLUMNS.TEST_COUNT:
+            self.batteriesIds = sorted(self.batteriesIds,
+                          key=lambda batteryId: self.batteriesManager.get(batteryId).testCount(),
                           reverse=reverse)
         
         self.layoutChanged.emit()
@@ -119,7 +125,7 @@ class BatteriesModel(QAbstractTableModel):
     
     def refresh(self):
         self.beginResetModel()
-        self.batteries = self.batteriesManager.batteriesList()
+        self.batteriesIds = self.batteriesManager.ids()
         self.sort(self.sortColumn, self.sortOrder)
         self.endResetModel()
         
@@ -294,7 +300,7 @@ class CurvesModel(QAbstractTableModel):
         
         
     def getSelected(self):
-        return list(self.selectedTests)
+        return [curve for curve in self.curves if curve in self.selectedTests]
     
     
     def sort(self, column, order):        

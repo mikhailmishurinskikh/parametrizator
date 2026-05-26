@@ -34,16 +34,15 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         
-    def getSelectedBattery(self):
+    def getSelectedBatteryId(self):
         selection = self.tableView.selectionModel().selectedRows()
         if not selection:
             QMessageBox.warning(self, "Не выбрана батарея",
                         "Выберите (или добавьте) батарею")
             return None
         row = selection[0].row()
-        batteryId = self.model.getId(row)
-        battery = self.batteriesManager.get(batteryId)
-        return battery
+        batteryId = self.model.getBatteryId(row)
+        return batteryId
                 
         
     def addBattery(self, name, numCells, mass):
@@ -52,15 +51,16 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         
     def delBattery(self):
-        battery = self.getSelectedBattery()
-        if battery:
-            self.batteriesManager.delete(battery.id)
+        batteryId = self.getSelectedBatteryId()
+        if batteryId:
+            self.batteriesManager.delete(batteryId)
             self.model.refresh()
             
             
     def editBattery(self):
-        battery = self.getSelectedBattery()
-        if battery:
+        batteryId = self.getSelectedBatteryId()
+        if batteryId:
+            battery = self.batteriesManager.get(batteryId)
             dialog = BatteryParamsDialog(self, battery)
             if dialog.exec() == QDialog.Accepted:
                 battery.setParams(*dialog.params())
@@ -80,8 +80,9 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         
     def testsOpen(self):
-        battery = self.getSelectedBattery()
-        if battery:
+        batteryId = self.getSelectedBatteryId()
+        if batteryId:
+            battery = self.batteriesManager.get(batteryId)
             self.batterySelected.emit(battery)
         
    

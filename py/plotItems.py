@@ -33,7 +33,6 @@ class PlotView(pg.GraphicsView):
     def clear(self):
         if self.plotItem:
             self.plotItem.close()
-            self.plotItem.deleteLater()
             self.plotItem = None
             
     

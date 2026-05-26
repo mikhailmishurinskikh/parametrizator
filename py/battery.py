@@ -55,8 +55,7 @@ class Test:
 
 
 class Battery:
-    def __init__(self, name, numCells, mass, battery_id):
-        self.id = battery_id
+    def __init__(self, name, numCells, mass):
         self.setParams(name, numCells, mass)
         self.tests = {}
         self.test_counter = 0
@@ -89,6 +88,10 @@ class Battery:
     
     def testsList(self):
         return list(self.tests.values())
+    
+    
+    def testCount(self):
+        return len(self.tests)
 
 
 
@@ -102,8 +105,13 @@ class BatteriesManager:
         self.batteries.pop(battery_id, None)
         
         
+    def addBattery(self, battery):
+        self.batteries[self.batteries_counter] = battery
+        self.batteries_counter += 1
+        
+        
     def add(self, name, numCells, mass):
-        battery = Battery(name, numCells, mass, self.batteries_counter)
+        battery = Battery(name, numCells, mass)
         self.addBattery(battery)
         return battery
         
@@ -130,15 +138,14 @@ class BatteriesManager:
         return list(self.batteries.values())
     
     
+    def ids(self):
+        return self.batteries.keys()
+    
+    
     def clear(self):
         self.batteries.clear()
         self.batteries_counter = 0
-        
-    
-    def addBattery(self, battery):
-        self.batteries[self.batteries_counter] = battery
-        self.batteries_counter += 1
-        
+
 
 
 def calcQ(test, battery, xlabel, ylabel=None):

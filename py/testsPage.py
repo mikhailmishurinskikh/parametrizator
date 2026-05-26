@@ -59,6 +59,7 @@ class TestsPage(QWidget, Ui_TestsPage):
         
         
     def setBattery(self, battery):
+        self.graphicsView.clear()
         self.battery = battery
         self.batteryLabel.setText(f"{battery.name}")
         self.model.setBattery(battery)
