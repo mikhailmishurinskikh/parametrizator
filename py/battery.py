@@ -62,9 +62,9 @@ class Battery:
         
         
     def addTest(self, name, testType, df):
+        self.test_counter += 1
         test = Test(name, testType, df, self.test_counter)
         self.tests[self.test_counter] = test
-        self.test_counter += 1
         return test
     
     
@@ -106,8 +106,8 @@ class BatteriesManager:
         
         
     def addBattery(self, battery):
-        self.batteries[self.batteries_counter] = battery
         self.batteries_counter += 1
+        self.batteries[self.batteries_counter] = battery
         
         
     def add(self, name, numCells, mass):
@@ -145,6 +145,12 @@ class BatteriesManager:
     def clear(self):
         self.batteries.clear()
         self.batteries_counter = 0
+        
+        
+    def count(self):
+        numBatteries = len(self.batteries)
+        numTests = sum([battery.testCount() for battery in self.batteries.values()])
+        return numBatteries, numTests
 
 
 

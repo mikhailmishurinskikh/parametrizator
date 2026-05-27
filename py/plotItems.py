@@ -32,6 +32,7 @@ class PlotView(pg.GraphicsView):
         
     def clear(self):
         if self.plotItem:
+            self.plotItem.setParentItem(None)
             self.plotItem.close()
             self.plotItem = None
             
@@ -71,13 +72,15 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
         self.plot(
             df["Total_Time,s"].values,
             df["I,A"].values,
-            pen=pg.mkPen(color='r', width=2)
+            pen=pg.mkPen(color='r', width=2),
+            autoDownsample=True
         )
         
         curve = pg.PlotCurveItem(
             df["Total_Time,s"].values,
             df["U,V"].values,
-            pen=pg.mkPen(color='b', width=2)
+            pen=pg.mkPen(color='b', width=2),
+            autoDownsample=True
         )
         self.right_vb.addItem(curve)
         
@@ -98,14 +101,16 @@ class TimeVoltageCurrentPlotItem(pg.PlotItem):
                 self.plot(
                     df["Total_Time,s"].values,
                     df["I,A"].values,
-                    pen=pg.mkPen(color='grey', width=2)
+                    pen=pg.mkPen(color='grey', width=2),
+                    autoDownsample=True
                 )
             )
             
             curve = pg.PlotCurveItem(
                 df["Total_Time,s"].values,
                 df["U,V"].values,
-                pen=pg.mkPen(color='grey', width=2)
+                pen=pg.mkPen(color='grey', width=2),
+                autoDownsample=True
             )
             self.right_vb.addItem(curve)
             self.greyPlots["right"].append(curve)
@@ -152,7 +157,8 @@ class CurvePlotItem(pg.PlotItem):
         self.plot(
             df["Q,Ah"],
             df["U,V"],
-            pen=pg.mkPen(color='m', width=2)
+            pen=pg.mkPen(color='m', width=2),
+            autoDownsample=True
         )
         
         
@@ -168,7 +174,8 @@ class CurvePlotItem(pg.PlotItem):
                 self.plot(
                     df["Q,Ah"],
                     df["U,V"],
-                    pen=pg.mkPen(color='grey', width=2)
+                    pen=pg.mkPen(color='grey', width=2),
+                    autoDownsample=True
                 )
             )
             
@@ -198,7 +205,8 @@ class NormCurvePlotItem(pg.PlotItem):
         self.plot(
             df["Q/m,Ah/kg"],
             df["Ucell,V"],
-            pen=pg.mkPen(color='m', width=2)
+            pen=pg.mkPen(color='m', width=2),
+            autoDownsample=True
         )
         
         
@@ -214,7 +222,8 @@ class NormCurvePlotItem(pg.PlotItem):
                 self.plot(
                     df["Q/m,Ah/kg"],
                     df["Ucell,V"],
-                    pen=pg.mkPen(color='grey', width=2)
+                    pen=pg.mkPen(color='grey', width=2),
+                    autoDownsample=True
                 )
             )
             

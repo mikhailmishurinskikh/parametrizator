@@ -18,11 +18,13 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         
         self.batteriesManager = batteriesManager
         self.initTable()
+        self.updateCountLabel()
         
         self.addBattery_button.clicked.connect(self.addBattery_dialog)
         self.delBattery_button.clicked.connect(self.delBattery)
         self.editBattery_button.clicked.connect(self.editBattery)
         self.testsOpen_button.clicked.connect(self.testsOpen)
+        self.model.modelReset.connect(self.updateCountLabel)
         
         
     def initTable(self):
@@ -73,6 +75,11 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         if dialog.exec() == QDialog.Accepted:
             self.addBattery(*dialog.params())
         dialog.deleteLater()
+        
+    
+    def updateCountLabel(self):
+        numBatteries, numTests = self.batteriesManager.count()
+        self.countLabel.setText(f"Всего батарей: {numBatteries}\nВсего испытаний: {numTests}")
         
         
     def fillTable(self):
