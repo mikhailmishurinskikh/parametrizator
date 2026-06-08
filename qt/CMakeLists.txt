@@ -27,8 +27,12 @@ set(PROJECT_SOURCES
         batteriesManager.hpp
         batteriesModel.cpp
         batteriesModel.hpp
+        batteriesParamsDialogs.cpp
+        batteriesParamsDialogs.hpp
         battery.cpp
         battery.hpp
+        test.cpp
+        test.hpp
         constants.hpp
         ${FORMS}
 )

@@ -1,24 +1,32 @@
 #pragma once
 
-#include <QMap>
-#include <QPair>
 #include "constants.hpp"
-#include "battery.hpp"
+
+#include <QString>
+#include <QMap>
+#include <QList>
+#include <QPair>
+
+class Battery;
+class BatteryParams;
 
 class BatteriesManager
 {
 public:
     BatteriesManager();
+    ~BatteriesManager();
 
     void del(Id batteryId);
-    Battery& add(Battery* battery);
-    Battery& add(const BatteryParams& params);
-    Battery& get(Id batteryId) const;
+    Id add(Battery* battery);
+    Id add(const BatteryParams& params);
     void clear();
-    const QList<Id>& ids() const;
+
+    Battery* get(Id batteryId) const;
+    QList<Id> ids() const;
     QPair<int, int> count() const;
+    QStringList names() const;
 
 private:
-    QMap<int, Battery*> batteries;
+    QMap<Id, Battery*> batteries;
     Id batteriesCounter;
 };

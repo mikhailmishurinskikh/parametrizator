@@ -1,34 +1,33 @@
 #include "batteriesManager.hpp"
+#include "battery.hpp"
 
 BatteriesManager::BatteriesManager()
     : batteriesCounter(0)
 {
 }
 
+BatteriesManager::~BatteriesManager()
+{
+    clear();
+}
+
 void BatteriesManager::del(Id batteryId)
 {
-    Q_ASSERT_X(batteries.contains(batteryId), "get", "Battery not found");
     delete batteries.take(batteryId);
 }
 
-Battery& BatteriesManager::add(Battery* battery)
+Id BatteriesManager::add(Battery* battery)
 {
     ++batteriesCounter;
     batteries[batteriesCounter] = battery;
-    return *batteries[batteriesCounter];
+    return batteriesCounter;
 }
 
-Battery& BatteriesManager::add(const BatteryParams& params)
+Id BatteriesManager::add(const BatteryParams& params)
 {
     ++batteriesCounter;
     batteries[batteriesCounter] = new Battery(params);
-    return *batteries[batteriesCounter];
-}
-
-Battery& BatteriesManager::get(Id batteryId) const
-{
-    Q_ASSERT_X(batteries.contains(batteryId), "get", "Battery not found");
-    return *batteries[batteryId];
+    return batteriesCounter;
 }
 
 void BatteriesManager::clear()
@@ -38,7 +37,12 @@ void BatteriesManager::clear()
     batteriesCounter = 0;
 }
 
-const QList<Id>& BatteriesManager::ids() const
+Battery* BatteriesManager::get(Id batteryId) const
+{
+    return batteries[batteryId];
+}
+
+QList<Id> BatteriesManager::ids() const
 {
     return batteries.keys();
 }
@@ -46,7 +50,16 @@ const QList<Id>& BatteriesManager::ids() const
 QPair<int, int> BatteriesManager::count() const
 {
     int numBatteries = batteries.size();
-    int numTests = 0;
+    int numTests = 0; //TODO
     
     return QPair<int, int>(numBatteries, numTests);
+}
+
+QStringList BatteriesManager::names() const
+{
+    QStringList result;
+    for (Battery* battery : batteries) {
+        result.append(battery->name());
+    }
+    return result;
 }

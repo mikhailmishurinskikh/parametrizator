@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>BatteryParamsDialog</class>
- <widget class="QDialog" name="BatteryParamsDialog">
+ <class>BatteryEditDialog</class>
+ <widget class="QDialog" name="BatteryEditDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Создание новой АКБ</string>
+   <string>Редактирование АКБ</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -19,17 +19,27 @@
      <property name="labelAlignment">
       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
      </property>
-     <item row="1" column="1">
-      <widget class="QSpinBox" name="numCellsInput">
-       <property name="minimum">
-        <number>1</number>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Название АКБ</string>
        </property>
       </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="nameInput"/>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Число аккумуляторов</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="numCellsInput">
+       <property name="minimum">
+        <number>1</number>
        </property>
       </widget>
      </item>
@@ -53,15 +63,22 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Название АКБ</string>
+     <item row="3" column="1">
+      <widget class="QDoubleSpinBox" name="nominalCapacityInput">
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <double>1000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="nameInput"/>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Номинальная емкость, Ач</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -82,7 +99,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>BatteryParamsDialog</receiver>
+   <receiver>BatteryEditDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -98,7 +115,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>BatteryParamsDialog</receiver>
+   <receiver>BatteryEditDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

@@ -1,13 +1,17 @@
-#include "mainWindow.hpp"
 #include "ui/ui_main_window.h"
+
+#include "mainWindow.hpp"
 #include "batteriesManager.hpp"
+#include "batteriesPage.hpp"
+
 
 
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    batteriesPage(new BatteriesPage(this))
+    manager(new BatteriesManager()),
+    batteriesPage(new BatteriesPage(this, manager))
 {
     ui->setupUi(this);
 
@@ -21,5 +25,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    delete manager;
     delete ui;
 }

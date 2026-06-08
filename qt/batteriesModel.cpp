@@ -1,6 +1,9 @@
 #include "batteriesModel.hpp"
+#include "battery.hpp"
+#include "batteriesManager.hpp"
 
-BatteriesModel::BatteriesModel(const BatteriesManager& manager, QObject* parent)
+
+BatteriesModel::BatteriesModel(BatteriesManager* manager, QObject* parent)
     : QAbstractTableModel(parent)
     , manager(manager)
 {
@@ -21,42 +24,45 @@ int BatteriesModel::columnCount(const QModelIndex& parent) const
 
 QVariant BatteriesModel::data(const QModelIndex& index, int role) const
 {
-    if (!index.isValid()) return QString();
-    if (role != Qt::DisplayRole) return QString();
+    if (!index.isValid()) return QVariant();
+    if (role != Qt::DisplayRole) return QVariant();
     
     int row = index.row();
     auto col = static_cast<BatteryColumn>(index.column());
     
-    if (row >= batteriesIds.size()) return QString();
+    if (row >= batteriesIds.size()) return QVariant();
     
     Id batteryId = batteriesIds[row];
-    const Battery& battery = manager.get(batteryId);
+    const Battery* battery = manager->get(batteryId);
     
     switch (col) {
         case BatteryColumn::Name:
-            return battery.name();
+            return battery->name();
         case BatteryColumn::NumCells:
-            return QString::number(battery.numCells());
+            return battery->numCells();
         case BatteryColumn::Mass:
-            return QString::number(battery.mass(), 'f', 1);
+            return battery->mass();
+        case BatteryColumn::NominalCapacity:
+            return battery->nominalCapacity();
         case BatteryColumn::TestCount:
-            return QString::number(1); // TODO
+            return "no data"; // TODO
         default:
-            return QString();
+            return QVariant();
     }
 }
 
 QVariant BatteriesModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (role != Qt::DisplayRole) return QString();
-    if (orientation != Qt::Horizontal) return QString();
+    if (role != Qt::DisplayRole) return QVariant();
+    if (orientation != Qt::Horizontal) return QVariant();
     
     switch (static_cast<BatteryColumn>(section)) {
-        case BatteryColumn::Name:      return "Имя батареи";
-        case BatteryColumn::NumCells:  return "Число аккумуляторов";
-        case BatteryColumn::Mass:      return "Масса, г";
-        case BatteryColumn::TestCount: return "Число испытаний";
-        default:                       return QString();
+        case BatteryColumn::Name:            return "Имя батареи";
+        case BatteryColumn::NumCells:        return "Число аккумуляторов";
+        case BatteryColumn::Mass:            return "Масса, г";
+        case BatteryColumn::NominalCapacity: return "Номинальная емкость, Ач";
+        case BatteryColumn::TestCount:       return "Число испытаний";
+        default:                             return QString();
     }
 }
 
@@ -66,45 +72,51 @@ Qt::ItemFlags BatteriesModel::flags(const QModelIndex& index) const
     return Qt::ItemIsSelectable | Qt::ItemIsEnabled;
 }
 
-Id BatteriesModel::getBatteryId(int row) const
+Id BatteriesModel::getBatteryId(const QModelIndex& index) const
 {
-    if (row < 0 || row >= batteriesIds.size()) return 0;
-    return batteriesIds[row];
+    return batteriesIds[index.row()];
 }
 
-void BatteriesModel::sort(int column, Qt::SortOrder order)
+void BatteriesModel::addRow(const BatteryParams &params)
 {
-    sortColumn = static_cast<BatteryColumn>(column);
-    sortOrder = order;
-    
-    bool reverse = (order == Qt::DescendingOrder);
-    
-    auto sortLambda = [this, reverse](Id a, Id b) {
-        const Battery& ba = manager.get(a);
-        const Battery& bb = manager.get(b);
-        
-        switch (sortColumn) {
-            case BatteryColumn::Name:
-                return reverse ? ba.name() > bb.name() : ba.name() < bb.name();
-            case BatteryColumn::NumCells:
-                return reverse ? ba.numCells() > bb.numCells() : ba.numCells() < bb.numCells();
-            case BatteryColumn::Mass:
-                return reverse ? ba.mass() > bb.mass() : ba.mass() < bb.mass();
-            // case BatteryColumn::TestCount:
-            //     return reverse ? ba.testCount() > bb.testCount() : ba.testCount() < bb.testCount();
-            default:
-                return false;
-        }
-    };
-    
-    std::sort(batteriesIds.begin(), batteriesIds.end(), sortLambda);
-    emit layoutChanged();
+    Id batteryId = manager->add(params);
+    int newRow = batteriesIds.size();
+    beginInsertRows(QModelIndex(), newRow, newRow);
+    batteriesIds.append(batteryId);
+    endInsertRows();
+}
+
+void BatteriesModel::removeRow(const QModelIndex& index)
+{
+    Id batteryId = getBatteryId(index);
+    manager->del(batteryId);
+    beginRemoveRows(QModelIndex(), index.row(), index.row());
+    batteriesIds.removeAt(index.row());
+    endRemoveRows();
+}
+
+void BatteriesModel::editRow(const QModelIndex& index, const BatteryParams &params)
+{
+    Id batteryId = getBatteryId(index);
+    Battery* battery = manager->get(batteryId);
+    battery->setParams(params);
+    emit dataChanged(index, index);
 }
 
 void BatteriesModel::refresh()
 {
     beginResetModel();
-    batteriesIds = manager.ids();
-    sort(static_cast<int>(sortColumn), sortOrder);
+    batteriesIds = manager->ids();
     endResetModel();
+}
+
+
+BatteriesProxyModel::BatteriesProxyModel(QObject* parent)
+    : QSortFilterProxyModel(parent)
+{
+}
+
+QVariant BatteriesProxyModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    return sourceModel()->headerData(section, orientation, role);
 }

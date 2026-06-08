@@ -2,7 +2,8 @@
 
 #include <QMainWindow>
 
-#include "batteriesPage.hpp"
+class BatteriesManager;
+class BatteriesPage;
 
 
 
@@ -21,6 +22,5 @@ public:
 private:
     Ui::MainWindow* ui;
     BatteriesPage* batteriesPage;
-
-    BatteriesManager manager;
+    BatteriesManager* manager;
 };
