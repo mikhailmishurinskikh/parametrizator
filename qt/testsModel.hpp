@@ -5,26 +5,24 @@
 #include <QAbstractTableModel>
 #include <QSortFilterProxyModel>
 
-class BatteriesManager;
-class BatteryParams;
+class TestParams;
+class Battery;
+class Test;
 
 
-enum class BatteryColumn {
+enum class TestColumn {
     Name,
-    NumCells ,
-    Mass,
-    NominalCapacity,
-    TestCount,
+    Type,
 
-    Count = 5
+    Count = 2
 };
 
-class BatteriesModel : public QAbstractTableModel
+class TestsModel : public QAbstractTableModel
 {
     Q_OBJECT
 
 public:
-    explicit BatteriesModel(BatteriesManager* manager, QObject* parent = nullptr);
+    explicit TestsModel(QObject* parent = nullptr);
     
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     int columnCount(const QModelIndex& parent = QModelIndex()) const override;
@@ -32,26 +30,25 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
     
-    Id getBatteryId(const QModelIndex& index) const;
-    void addRow(const BatteryParams& params);
+    Id getTestId(const QModelIndex& index) const;
+    void setBattery(Battery* p_battery);
+    void addRow(Test* test);
     void removeRow(const QModelIndex& index);
-    void editRow(const QModelIndex& index, const BatteryParams& params);
+    void editRow(const QModelIndex& index, const TestParams& params);
     void refresh();
 
-signals:
-    void countChanged();
 
 private:
-    BatteriesManager* manager;
-    QList<Id> batteriesIds;
+    Battery* battery;
+    QList<Id> testsIds;
 };
 
 
-class BatteriesProxyModel : public QSortFilterProxyModel
+class TestsProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
 
 public:
-    explicit BatteriesProxyModel(QObject* parent = nullptr);
+    explicit TestsProxyModel(QObject* parent = nullptr);
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 };

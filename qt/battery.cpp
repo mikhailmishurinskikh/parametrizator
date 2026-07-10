@@ -1,11 +1,20 @@
 #include "battery.hpp"
 #include "batteriesManager.hpp"
+#include "bpd.hpp"
+#include "test.hpp"
 
-Battery::Battery() = default;
 
-Battery::Battery(const BatteryParams& p)
-    : params(p)
+Battery::Battery(const BatteryParams& p, QDir* newDir)
+    : params(p), dir(newDir), testsCounter(0)
 {
+}
+
+Battery::~Battery()
+{
+    qDeleteAll(tests);
+    tests.clear();
+    testsCounter = 0;
+    delete dir;
 }
 
 void Battery::setParams(const BatteryParams& p)
@@ -13,12 +22,51 @@ void Battery::setParams(const BatteryParams& p)
     params = p;
 }
 
+void Battery::del(Id testId)
+{
+    delete tests.take(testId);
+}
+
+Id Battery::add(Test* test)
+{
+    ++testsCounter;
+    QString newFilePath = dir->filePath(QString::number(testsCounter) + ".btd");
+    test->setNewFile(newFilePath);
+    
+    tests[testsCounter] = test;
+    return testsCounter;
+}
+
+Test* Battery::get(Id testId) const
+{
+    return tests[testId];
+}
+
+QList<Id> Battery::ids() const
+{
+    return tests.keys();
+}
+
+int Battery::count() const
+{
+    return tests.count();
+}
+
+QStringList Battery::names() const
+{
+    QStringList result;
+    for (Test* test : tests.values()) {
+        result.append(test->name());
+    }
+    return result;
+}
+
 Message BatteryParams::validate(const BatteriesManager* manager, const QString& oldName) const
 {
     if (name.isEmpty()) {
         return Message{
             "Вы не ввели название АКБ",
-            MessageType::ERROR
+            MessageResult::Error
         };
     }
     
@@ -27,7 +75,7 @@ Message BatteryParams::validate(const BatteriesManager* manager, const QString& 
         return Message{
             "Уже добавлена АКБ с таким названием.\n"
             "Выберите другое название",
-            MessageType::ERROR
+            MessageResult::Error
         };
     }
 
@@ -35,19 +83,19 @@ Message BatteryParams::validate(const BatteriesManager* manager, const QString& 
         return Message{
             "Масса батареи менее 5 грамм\n"
             "Введите реалистичную массу",
-            MessageType::ERROR
+            MessageResult::Error
         };
     }
 
     if (nominalCapacity <= 0) {
         return Message{
             "Номинальная емкость должна быть больше нуля",
-            MessageType::ERROR
+            MessageResult::Error
         };
     }
     
     return Message{
         "ок",
-        MessageType::SUCCESS
+        MessageResult::Success
     };
 }

@@ -181,6 +181,7 @@ class SaveBPAWorker(QThread):
             'name': battery.name,
             'numCells': battery.numCells,
             'mass': battery.mass,
+            "capacity" : battery.capacity
         }
         
         with open(os.path.join(battery_folder, 'params.json'), 'w', encoding='utf-8') as f:
@@ -295,13 +296,13 @@ class LoadBPAWorker(QThread):
             params = json.load(f)
         
         message = validate.BATTERY_PARAMS(
-                params["name"], params["numCells"], params["mass"],
+                params["name"], params["numCells"], params["mass"], params["capacity"],
                 self.batteriesManager
         )
         
         if message == "ok":    
             battery = Battery(
-                params['name'], params['numCells'], params['mass']
+                params['name'], params['numCells'], params['mass'], params["capacity"]
             )
             self.newBatteries.append(battery)
             

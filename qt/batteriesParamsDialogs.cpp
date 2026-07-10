@@ -1,6 +1,5 @@
-#include <QMessageBox>
-
 #include "batteriesParamsDialogs.hpp"
+#include "batteriesManager.hpp"
 #include "battery.hpp"
 
 
@@ -31,7 +30,7 @@ void BatteryAddDialog::accept()
 {
     BatteryParams p = params();
     Message message = p.validate(manager, QString(""));
-    if (message.type == MessageType::SUCCESS) {
+    if (message.result == MessageResult::Success) {
         QDialog::accept();
     } else {
         QMessageBox::warning(this, "Недопустимые параметры", message.text);
@@ -73,7 +72,7 @@ void BatteryEditDialog::accept()
 {
     BatteryParams p = params();
     Message message = p.validate(manager, battery->name());
-    if (message.type == MessageType::SUCCESS) {
+    if (message.result == MessageResult::Success) {
         QDialog::accept();
     } else {
         QMessageBox::warning(this, "Недопустимые параметры", message.text);

@@ -45,7 +45,7 @@ QVariant BatteriesModel::data(const QModelIndex& index, int role) const
         case BatteryColumn::NominalCapacity:
             return battery->nominalCapacity();
         case BatteryColumn::TestCount:
-            return "no data"; // TODO
+            return battery->count();
         default:
             return QVariant();
     }
@@ -84,6 +84,7 @@ void BatteriesModel::addRow(const BatteryParams &params)
     beginInsertRows(QModelIndex(), newRow, newRow);
     batteriesIds.append(batteryId);
     endInsertRows();
+    emit countChanged();
 }
 
 void BatteriesModel::removeRow(const QModelIndex& index)
@@ -93,6 +94,7 @@ void BatteriesModel::removeRow(const QModelIndex& index)
     beginRemoveRows(QModelIndex(), index.row(), index.row());
     batteriesIds.removeAt(index.row());
     endRemoveRows();
+    emit countChanged();
 }
 
 void BatteriesModel::editRow(const QModelIndex& index, const BatteryParams &params)
@@ -108,6 +110,7 @@ void BatteriesModel::refresh()
     beginResetModel();
     batteriesIds = manager->ids();
     endResetModel();
+    emit countChanged();
 }
 
 

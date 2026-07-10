@@ -1,11 +1,14 @@
 #pragma once
 
 #include <QDialog>
-
-#include "batteriesManager.hpp"
+#include <QMessageBox>
 
 #include "ui/ui_battery_add_dialog.h"
 #include "ui/ui_battery_edit_dialog.h"
+
+class BatteriesManager;
+class BatteryParams;
+class Battery;
 
 
 namespace Ui {

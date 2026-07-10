@@ -33,6 +33,7 @@ class Test:
             borders.add(group[xlabel].min())
             borders.add(group[xlabel].max())
         
+        print(sorted(list(borders)))
         return sorted(list(borders))
          
     
@@ -55,8 +56,8 @@ class Test:
 
 
 class Battery:
-    def __init__(self, name, numCells, mass):
-        self.setParams(name, numCells, mass)
+    def __init__(self, name, numCells, mass, capacity):
+        self.setParams(name, numCells, mass, capacity)
         self.tests = {}
         self.test_counter = 0
         
@@ -80,10 +81,11 @@ class Battery:
         return self.tests[test_id]
         
         
-    def setParams(self, name, numCells, mass):
+    def setParams(self, name, numCells, mass, capacity):
         self.name = name
         self.numCells = numCells
         self.mass = mass
+        self.capacity = capacity
         
     
     def testsList(self):
@@ -110,8 +112,8 @@ class BatteriesManager:
         self.batteries[self.batteries_counter] = battery
         
         
-    def add(self, name, numCells, mass):
-        battery = Battery(name, numCells, mass)
+    def add(self, name, numCells, mass, capacity):
+        battery = Battery(name, numCells, mass, capacity)
         self.addBattery(battery)
         return battery
         

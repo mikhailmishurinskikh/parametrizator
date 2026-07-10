@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>592</width>
-    <height>388</height>
+    <width>630</width>
+    <height>647</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -53,30 +53,19 @@
         </layout>
        </item>
        <item>
-        <widget class="QTableView" name="tableView"/>
+        <widget class="QTableView" name="tableView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
      <widget class="QWidget" name="layoutWidget">
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QPushButton" name="addArchive_button">
-           <property name="text">
-            <string>Добавить испытания из архива</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="saveArchive_button">
-           <property name="text">
-            <string>Сохранить все в архив</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
@@ -103,7 +92,26 @@
         </layout>
        </item>
        <item>
-        <widget class="PlotView" name="graphicsView"/>
+        <widget class="QFrame" name="frame">
+         <property name="frameShape">
+          <enum>QFrame::Shape::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="Canvas" name="canvas" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -124,9 +132,10 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>PlotView</class>
-   <extends>QGraphicsView</extends>
-   <header>plotItems</header>
+   <class>Canvas</class>
+   <extends>QWidget</extends>
+   <header>canvas.hpp</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

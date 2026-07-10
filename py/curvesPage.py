@@ -31,6 +31,7 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.tableView.activated.connect(self.model.setCheck)
         
         self.oX_comboBox.currentTextChanged.connect(self.model.setXlabel)
+        self.filterButton.clicked.connect(self.applyFilter)
         
         
     def updatePage(self):
@@ -49,6 +50,8 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.tableView.setSelectionMode(QTableView.SingleSelection)
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
+        self.filterComboBox.addItems(["Емкость ном, Ач", "Емкость эксп, Ач", "Энергоемкость, Вт ч", "Число аккумуляторов", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг"])
+        
         
     def showChecked(self):
         if self.showChecked_button.text() == "Показать только выбранное":
@@ -57,7 +60,15 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         elif self.showChecked_button.text() == "Показать все":
             self.showChecked_button.setText("Показать только выбранное")
             self.model.refresh()
+            
+            
+    def applyFilter(self):
+        column = self.filterComboBox.currentText()
+        fromValue = self.fromSpinBox.value()
+        toValue = self.toSpinBox.value()
         
+        self.model.filter(column, fromValue, toValue)
+    
         
     def plot(self):
         xlabel = self.oX_comboBox.currentText()
@@ -102,15 +113,13 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         if filter == "CSV файлы (*.csv)":
             xlabel = self.oX_comboBox.currentText()
             ylabel = self.oY_comboBox.currentText()
-            selected = self.list.getSelected()
+            selected = self.model.getSelected()
         
             if not selected:
                 QMessageBox.warning(self, "Ничего не выбрано", "Выберите в списке выше испытания для сохранения")
         
             if len(selected) == 1:                
-                ids = selected[0]
-                battery = self.curves[ids["batteryId"]]["battery"]
-                test = self.curves[ids["batteryId"]]["tests"][ids["testId"]]
+                battery, test = selected[0]
                 x, y = calcQ(test, battery, xlabel, ylabel)
                 pd.DataFrame({xlabel : x, ylabel : y}).to_csv(file_path, index=False, encoding="utf-8")
                 QMessageBox.information(self, "Данные сохранены", f"Данные сохранены по пути:\n{file_path}")

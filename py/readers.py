@@ -144,6 +144,7 @@ def stdCsv(file):
     try:
         columnsRow = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         columnsNormCurve = ['Ucell,V', 'Q/m,Ah/kg']
+        columnsCurve = ['U,V', 'Q,Ah']
         data = pd.read_csv(file)
         if all(col in data.columns for col in columnsRow):
             data = data[columnsRow]
@@ -152,6 +153,11 @@ def stdCsv(file):
             
         elif all(col in data.columns for col in columnsNormCurve):
             data = data[columnsNormCurve]
+            testType = "Норм. разрядная кривая"
+            message = "ok"
+            
+        elif all(col in data.columns for col in columnsCurve):
+            data = data[columnsCurve]
             testType = "Разрядная кривая"
             message = "ok"
             

@@ -19,7 +19,7 @@ def TEST_NAME(name, battery, oldName=""):
     return "ok"
 
 
-def BATTERY_PARAMS(name, numCells, mass, batteryManager, oldName=""):
+def BATTERY_PARAMS(name, numCells, mass, capacity, batteryManager, oldName=""):
     if not name:
         message = "Вы не ввели название АКБ"
         return message
@@ -33,6 +33,11 @@ def BATTERY_PARAMS(name, numCells, mass, batteryManager, oldName=""):
     if mass < 5:
         message = "Масса батареи менее 5 грамм\n" \
             "Введите реалистичную массу"
+        return message
+    
+    if capacity < 0.1:
+        message = "Емкость слишком мала\n" \
+            "Введите реалистичную емкость"
         return message
     
     if not is_valid_filename(name):

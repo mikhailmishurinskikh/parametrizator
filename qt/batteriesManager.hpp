@@ -6,6 +6,8 @@
 #include <QMap>
 #include <QList>
 #include <QPair>
+#include <QTemporaryDir>
+#include <QDir>
 
 class Battery;
 class BatteryParams;
@@ -17,9 +19,7 @@ public:
     ~BatteriesManager();
 
     void del(Id batteryId);
-    Id add(Battery* battery);
     Id add(const BatteryParams& params);
-    void clear();
 
     Battery* get(Id batteryId) const;
     QList<Id> ids() const;
@@ -27,6 +27,8 @@ public:
     QStringList names() const;
 
 private:
-    QMap<Id, Battery*> batteries;
     Id batteriesCounter;
+    QMap<Id, Battery*> batteries;
+
+    QTemporaryDir* tempDir;
 };

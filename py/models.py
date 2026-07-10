@@ -7,10 +7,11 @@ class BATTERY_COLUMNS:
     NAME = 0
     NUM_CELLS = 1
     MASS = 2
-    TEST_COUNT = 3
+    CAPACITY = 3
+    TEST_COUNT = 4
     
-    NCOLS = 4
-    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г", "Число испытаний"]
+    NCOLS = 5
+    HEADERS = ["Имя батареи", "Число аккумуляторов", "Масса, г", "Емкость, Ач", "Число испытаний"]
     
     
 class TEST_COLUMNS:
@@ -24,15 +25,17 @@ class TEST_COLUMNS:
 class CURVES_COLUMNS:
     BATTERY = 0
     NAME = 1
-    TYPE = 2
-    CAPACITY = 3
-    ENERGY_CAPACITY = 4
-    LABEL = 5
+    NUM_CELLS = 2
+    NOM_CAPACITY = 3
+    TYPE = 4
+    CAPACITY = 5
+    ENERGY_CAPACITY = 6
+    LABEL = 7
     
-    NCOLS = 6
+    NCOLS = 8
     HEADERS = {
-        "Q" : ["Батарея", "Испытание", "Тип кривой", "Емкость, Ач", "Энергоемкость, Вт ч", "Имя в легенде"],
-        "Q/m" : ["Батарея", "Испытание", "Тип кривой", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг", "Имя в легенде"]
+        "Q" : ["Батарея", "Испытание", "Число аккумуляторов", "Ном. емкость, Ач", "Тип кривой", "Емкость, Ач", "Энергоемкость, Вт ч", "Имя в легенде"],
+        "Q/m" : ["Батарея", "Испытание", "Число аккумуляторов", "Ном. емкость, Ач", "Тип кривой", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг", "Имя в легенде"]
     }
 
 
@@ -73,6 +76,8 @@ class BatteriesModel(QAbstractTableModel):
             return f"{battery.numCells}"
         elif col == BATTERY_COLUMNS.MASS:
             return f"{battery.mass:.2f}"
+        elif col == BATTERY_COLUMNS.CAPACITY:
+            return f"{battery.capacity:.2f}"
         elif col == BATTERY_COLUMNS.TEST_COUNT:
             return f"{battery.testCount()}"
         
@@ -231,6 +236,10 @@ class CurvesModel(QAbstractTableModel):
                 return test.name
             elif col == CURVES_COLUMNS.TYPE:
                 return test.testType
+            elif col == CURVES_COLUMNS.NUM_CELLS:
+                return f"{battery.numCells}"
+            elif col == CURVES_COLUMNS.NOM_CAPACITY:
+                return f"{battery.capacity:.2f}"
             elif col == CURVES_COLUMNS.CAPACITY:
                 return f"{calcQ(test, battery, self.xlabel).max():.2f}"
             elif col == CURVES_COLUMNS.ENERGY_CAPACITY:
@@ -372,6 +381,28 @@ class CurvesModel(QAbstractTableModel):
         self.curves = [item for item in self.curves if item in self.selectedTests]
         self.sort(self.sortColumn, self.sortOrder)
         self.endResetModel()
+        
+        
+    def filter(self, column, fromValue, toValue):
+        for row in range(self.rowCount()):
+            index = self.index(row, CURVES_COLUMNS.BATTERY)
+            battery, test = self.curves[row]
+            
+            if column == "Емкость ном, Ач":
+                value = battery.capacity
+            elif column == "Емкость эксп, Ач":
+                value = test.df["Q,Ah"].max()
+            elif column == "Энергоемкость, Вт ч":
+                value = test.df["W,Wh"].max()
+            elif column == "Число аккумуляторов":
+                value = battery.numCells
+            elif column == "Уд. емкость, Ач/кг":
+                value = (test.df["Q,Ah"] / (battery.mass / 1000)).abs() * battery.numCells
+            elif column == "Уд. энергоемкость, Вт ч/кг":
+                value = test.df['W,Wh'].max() / (battery.mass/1000)
+            
+            if (value >= fromValue) and (value <= toValue):
+                self.setData(index, Qt.Checked, Qt.CheckStateRole)
         
         
     def refresh(self):

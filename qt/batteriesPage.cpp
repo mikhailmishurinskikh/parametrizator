@@ -4,6 +4,7 @@
 #include "batteriesParamsDialogs.hpp"
 #include "batteriesModel.hpp"
 #include "battery.hpp"
+#include "batteriesManager.hpp"
 
 
 
@@ -26,6 +27,8 @@ BatteriesPage::BatteriesPage(QWidget* parent, BatteriesManager* manager)
             this, &BatteriesPage::editBattery);
     connect(ui->testsOpen_button, &QPushButton::clicked,
             this, &BatteriesPage::testsOpen);
+    connect(model, &BatteriesModel::countChanged,
+            this, &BatteriesPage::updateCountLabel);
 }
 
 BatteriesPage::~BatteriesPage()
@@ -41,9 +44,6 @@ void BatteriesPage::initTable()
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    
-    connect(model, &BatteriesModel::modelReset,
-            this, &BatteriesPage::updateCountLabel);
 }
 
 QModelIndex BatteriesPage::getSelectedIndex()

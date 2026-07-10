@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "BatteryParametrizator"
-#define MyAppVersion "1.2"
+#define MyAppVersion "1.3"
 #define MyAppExeName "main.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".bpa"

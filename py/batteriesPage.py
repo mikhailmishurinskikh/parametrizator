@@ -47,8 +47,8 @@ class BatteriesPage(QWidget, Ui_BatteriesPage):
         return batteryId
                 
         
-    def addBattery(self, name, numCells, mass):
-        self.batteriesManager.add(name, numCells, mass)
+    def addBattery(self, name, numCells, mass, capacity):
+        self.batteriesManager.add(name, numCells, mass, capacity)
         self.model.refresh()
         
         
@@ -105,12 +105,14 @@ class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
             self.nameInput.setText(battery.name)
             self.numCellsInput.setValue(battery.numCells)
             self.massInput.setValue(battery.mass)
+            self.capacityInput.setValue(battery.capacity)
             self.setWindowTitle("Изменение параметров АКБ")
         
         else:
             self.nameInput.setText("")
             self.numCellsInput.setValue(1)
             self.massInput.setValue(5.0)
+            self.capacityInput.setValue(0.1)
             self.setWindowTitle("Создание новой АКБ")
         
         
@@ -119,6 +121,7 @@ class BatteryParamsDialog(QDialog, Ui_BatteryParamsDialog):
             self.nameInput.text(),
             self.numCellsInput.value(),
             self.massInput.value(),
+            self.capacityInput.value()
         )
         
     

@@ -1,14 +1,20 @@
 #include "batteriesManager.hpp"
 #include "battery.hpp"
 
+#include <QDebug>
+
 BatteriesManager::BatteriesManager()
-    : batteriesCounter(0)
+    : batteriesCounter(0),
+    tempDir(new QTemporaryDir())
 {
 }
 
 BatteriesManager::~BatteriesManager()
 {
-    clear();
+    qDeleteAll(batteries);
+    batteries.clear();
+    batteriesCounter = 0;
+    delete tempDir;
 }
 
 void BatteriesManager::del(Id batteryId)
@@ -16,25 +22,15 @@ void BatteriesManager::del(Id batteryId)
     delete batteries.take(batteryId);
 }
 
-Id BatteriesManager::add(Battery* battery)
-{
-    ++batteriesCounter;
-    batteries[batteriesCounter] = battery;
-    return batteriesCounter;
-}
-
 Id BatteriesManager::add(const BatteryParams& params)
 {
     ++batteriesCounter;
-    batteries[batteriesCounter] = new Battery(params);
-    return batteriesCounter;
-}
+    QString batteryDirPath = tempDir->path() + QString::number(batteriesCounter);
+    QDir().mkpath(batteryDirPath);
+    QDir* batteryDir = new QDir(batteryDirPath);
 
-void BatteriesManager::clear()
-{
-    qDeleteAll(batteries);
-    batteries.clear();
-    batteriesCounter = 0;
+    batteries[batteriesCounter] = new Battery(params, batteryDir);
+    return batteriesCounter;
 }
 
 Battery* BatteriesManager::get(Id batteryId) const
@@ -50,15 +46,17 @@ QList<Id> BatteriesManager::ids() const
 QPair<int, int> BatteriesManager::count() const
 {
     int numBatteries = batteries.size();
-    int numTests = 0; //TODO
-    
+    int numTests = 0;
+    for (Battery* battery : batteries.values()) {
+        numTests += battery->count();
+    }
     return QPair<int, int>(numBatteries, numTests);
 }
 
 QStringList BatteriesManager::names() const
 {
     QStringList result;
-    for (Battery* battery : batteries) {
+    for (Battery* battery : batteries.values()) {
         result.append(battery->name());
     }
     return result;
