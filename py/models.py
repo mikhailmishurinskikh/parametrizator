@@ -245,10 +245,11 @@ class CurvesModel(QAbstractTableModel):
             elif col == CURVES_COLUMNS.ENERGY_CAPACITY:
                 return calcWh(test, battery, self.xlabel)
             elif col == CURVES_COLUMNS.LABEL:
-                if (battery, test) in self.labels.keys():
-                    return self.labels[(battery, test)]
-                else:
-                    return "По умолч."
+                return self.labels.get((battery, test), "По умолч.")
+            
+        elif role == Qt.EditRole:
+            if col == CURVES_COLUMNS.LABEL:
+                return self.labels.get((battery, test), "По умолч.")
         
         elif role == Qt.CheckStateRole:
             if col == CURVES_COLUMNS.BATTERY:
@@ -297,6 +298,7 @@ class CurvesModel(QAbstractTableModel):
         
         if index.column() == CURVES_COLUMNS.LABEL and role == Qt.EditRole:
             self.labels[self.curves[index.row()]] = value
+            self.dataChanged.emit(index, index)
             return True
         
         return False
@@ -369,7 +371,6 @@ class CurvesModel(QAbstractTableModel):
             
     def deselectAll(self):
         self.beginResetModel()
-        self.labels = {}
         for row in range(self.rowCount()):
             index = self.index(row, CURVES_COLUMNS.BATTERY)
             self.setData(index, Qt.Unchecked, Qt.CheckStateRole)
@@ -387,22 +388,35 @@ class CurvesModel(QAbstractTableModel):
         for row in range(self.rowCount()):
             index = self.index(row, CURVES_COLUMNS.BATTERY)
             battery, test = self.curves[row]
+            if len(self.selectedTests) != 0 and self.curves[row] not in self.selectedTests:
+                continue
             
             if column == "Емкость ном, Ач":
                 value = battery.capacity
+            
             elif column == "Емкость эксп, Ач":
-                value = test.df["Q,Ah"].max()
+                value, _ = calcQ(test, battery, "Q")
+                
             elif column == "Энергоемкость, Вт ч":
-                value = test.df["W,Wh"].max()
+                value = calcWh(test, battery, "Q")
+                if value == "-": value = -1
+                else: value = float(value)
+                
             elif column == "Число аккумуляторов":
                 value = battery.numCells
+                
             elif column == "Уд. емкость, Ач/кг":
-                value = (test.df["Q,Ah"] / (battery.mass / 1000)).abs() * battery.numCells
+                value, _ = calcQ(test, battery, "Q/m")
+                
             elif column == "Уд. энергоемкость, Вт ч/кг":
-                value = test.df['W,Wh'].max() / (battery.mass/1000)
+                value = calcWh(test, battery, "Q/m")
+                if value == "-": value = -1
+                else: value = float(value)
             
             if (value >= fromValue) and (value <= toValue):
                 self.setData(index, Qt.Checked, Qt.CheckStateRole)
+            else:
+                self.setData(index, Qt.Unchecked, Qt.CheckStateRole)
         
         
     def refresh(self):

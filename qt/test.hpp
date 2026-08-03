@@ -14,6 +14,10 @@ class Battery;
 struct TestParams {
     QString name;
     TestType type;
+    TestFloat capacity;
+    TestFloat energyCapacity;
+    TestFloat normCapacity;
+    TestFloat normEnergyCapacity;
 
     Message validate(const Battery* battery, const QStringList& otherNames) const;
 };
@@ -28,10 +32,16 @@ public:
     Message checkFile();
     void setNewFile(const QString& filePath);
 
+    void calcCapacities();
 
     QString name() const { return params.name; }
     TestType type() const { return params.type; }
+    TestFloat capacity() const { return params.capacity; }
+    TestFloat energyCapacity() const { return params.energyCapacity; }
+    TestFloat normCapacity() const { return params.normCapacity; }
+    TestFloat normEnergyCapacity() const { return params.normEnergyCapacity; }
     TestParams getParams() const { return params; }
+    
     QString filePath() const { return QFileInfo(*file).absoluteFilePath(); }
 
 private:

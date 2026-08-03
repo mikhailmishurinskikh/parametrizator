@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QWidget, QTableView, QHeaderView,
                                QFileDialog, QMessageBox)
 
@@ -8,6 +9,7 @@ from battery import calcQ
 from models import CurvesModel
 
 from ui_py.ui_curves import Ui_CurvesPage
+from ui_py.ui_filter import Ui_FilterBox
 
 
 
@@ -31,7 +33,9 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.tableView.activated.connect(self.model.setCheck)
         
         self.oX_comboBox.currentTextChanged.connect(self.model.setXlabel)
-        self.filterButton.clicked.connect(self.applyFilter)
+        
+        self.addFilter_button.clicked.connect(self.addFilter)
+        self.applyFilter_button.clicked.connect(self.applyFilter)
         
         
     def updatePage(self):
@@ -50,8 +54,6 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         self.tableView.setSelectionMode(QTableView.SingleSelection)
         self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
-        self.filterComboBox.addItems(["Емкость ном, Ач", "Емкость эксп, Ач", "Энергоемкость, Вт ч", "Число аккумуляторов", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг"])
-        
         
     def showChecked(self):
         if self.showChecked_button.text() == "Показать только выбранное":
@@ -62,12 +64,24 @@ class CurvesPage(QWidget, Ui_CurvesPage):
             self.model.refresh()
             
             
-    def applyFilter(self):
-        column = self.filterComboBox.currentText()
-        fromValue = self.fromSpinBox.value()
-        toValue = self.toSpinBox.value()
+    def addFilter(self):
+        newFilterBox = FilterBox(self)
+        self.filtersLayout.insertWidget(0, newFilterBox)
+        newFilterBox.selfDel_signal.connect(self.delFilter)
         
-        self.model.filter(column, fromValue, toValue)
+        
+    def delFilter(self, filterBox):
+        self.filtersLayout.removeWidget(filterBox)
+        filterBox.setParent(None)
+        filterBox.deleteLater()
+            
+            
+    def applyFilter(self):
+        self.model.deselectAll()
+        for i in range(self.filtersLayout.count()):
+            widget = self.filtersLayout.itemAt(i).widget()
+            if isinstance(widget, FilterBox):
+                self.model.filter(*widget.filterParams())
     
         
     def plot(self):
@@ -129,3 +143,23 @@ class CurvesPage(QWidget, Ui_CurvesPage):
         
         else:
             self.canvas.save(file_path)
+            
+    
+            
+class FilterBox(QWidget, Ui_FilterBox):
+    selfDel_signal = Signal(QWidget)
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setupUi(self)
+        
+        self.filterComboBox.addItems(["Емкость ном, Ач", "Емкость эксп, Ач", "Энергоемкость, Вт ч", "Число аккумуляторов", "Уд. емкость, Ач/кг", "Уд. энергоемкость, Вт ч/кг"])
+        self.selfDel_button.clicked.connect(lambda: self.selfDel_signal.emit(self))
+        
+        
+    def filterParams(self):
+        column = self.filterComboBox.currentText()
+        fromValue = self.fromSpinBox.value()
+        toValue = self.toSpinBox.value()
+        
+        return column, fromValue, toValue

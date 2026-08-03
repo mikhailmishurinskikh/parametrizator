@@ -62,7 +62,7 @@ QVariant BatteriesModel::headerData(int section, Qt::Orientation orientation, in
         case BatteryColumn::Mass:            return "Масса, г";
         case BatteryColumn::NominalCapacity: return "Номинальная емкость, Ач";
         case BatteryColumn::TestCount:       return "Число испытаний";
-        default:                             return QString();
+        default:                             return QVariant();
     }
 }
 

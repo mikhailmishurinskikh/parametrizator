@@ -1,6 +1,9 @@
 #pragma once
 
 #include <QString>
+#include <QVector>
+#include <algorithm>
+#include <cmath>
 
 constexpr int MAX_COLUMNS = 64;
 
@@ -23,7 +26,8 @@ enum class Value {
     Capacity,
     Energy,
     Norm_Capacity,
-    Norm_Voltage
+    Norm_Voltage,
+    Norm_Energy
 };
 
 struct Message {
@@ -57,4 +61,15 @@ inline QString valueToString(Value value)
         case Value::Norm_Voltage:  return "Норм. напряжение, В";
         default:                   return "Неизвестно";
     }
+}
+
+inline TestFloat calcMax(QVector<TestFloat> array) {
+    return *std::max_element(array.begin(), array.end());
+}
+
+inline TestFloat calcAbsMax(QVector<TestFloat> array) {
+    return *std::max_element(array.begin(), array.end(),
+                [](TestFloat a, TestFloat b) {
+                    return std::abs(a) < std::abs(b);
+                });
 }

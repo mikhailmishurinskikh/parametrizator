@@ -49,7 +49,7 @@ QVariant TestsModel::headerData(int section, Qt::Orientation orientation, int ro
     switch (static_cast<TestColumn>(section)) {
         case TestColumn::Name:  return "Имя испытания";
         case TestColumn::Type:  return "Тип испытания";
-        default:                return QString();
+        default:                return QVariant();
     }
 }
 

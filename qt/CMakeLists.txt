@@ -38,6 +38,10 @@ set(PROJECT_SOURCES
         batteriesParamsDialogs.hpp
         battery.cpp
         battery.hpp
+        curvesPage.cpp
+        curvesPage.hpp
+        curvesModel.cpp
+        curvesModel.hpp
         test.cpp
         test.hpp
         constants.hpp

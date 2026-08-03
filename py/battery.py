@@ -22,18 +22,20 @@ class Test:
         
     def defineBorders(self):
         xlabel = self.getXlabel()
-        criteria = [column for column in ["Cycle", "Step_index", "Step_type"] if column in self.df.columns]
-        if not criteria:
-            return [self.df[xlabel].min(), self.df[xlabel].max()]
+        
+        criteria_cols = ["Cycle", "Step_index", "Step_type"]
+        self.df['_step_key'] = self.df[criteria_cols].astype(str).agg('_'.join, axis=1)
+        
+        self.df['_step_id'] = (self.df['_step_key'] != self.df['_step_key'].shift()).cumsum()
         
         borders = set()
-        grouped = self.df.groupby(criteria, observed=False)
+        grouped = self.df.groupby('_step_id', observed=False)
         
         for _, group in grouped:
             borders.add(group[xlabel].min())
             borders.add(group[xlabel].max())
         
-        print(sorted(list(borders)))
+        self.df.drop(columns=['_step_key', '_step_id'], inplace=True)
         return sorted(list(borders))
          
     

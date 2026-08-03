@@ -1,5 +1,6 @@
 #include "batteriesManager.hpp"
 #include "battery.hpp"
+#include "test.hpp"
 
 #include <QDebug>
 
@@ -58,6 +59,20 @@ QStringList BatteriesManager::names() const
     QStringList result;
     for (Battery* battery : batteries.values()) {
         result.append(battery->name());
+    }
+    return result;
+}
+
+QVector<QPair<Id, Id>> BatteriesManager::curves() const
+{
+    QList<QPair<Id, Id>> result;
+    for (const auto& [batteryId, battery] : batteries.asKeyValueRange()) {
+        for (Id testId : battery->ids()) {
+            Test* test = battery->get(testId);
+            if ((test->type() == TestType::Curve) || (test->type() == TestType::Norm_Curve)) {
+                result.append(QPair<Id, Id>(batteryId, testId));
+            }
+        }
     }
     return result;
 }

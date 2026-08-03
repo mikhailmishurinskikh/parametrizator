@@ -39,8 +39,8 @@ BatteriesPage::~BatteriesPage()
 void BatteriesPage::initTable()
 {
     proxy->setSourceModel(model);
-    
     ui->tableView->setModel(proxy);
+    
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);

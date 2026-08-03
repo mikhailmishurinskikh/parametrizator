@@ -25,44 +25,36 @@
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
           <widget class="QLabel" name="label_4">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
-            <string>Фильтр: столбец - </string>
+            <string>Фильтр:</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="filterComboBox"/>
+          <layout class="QVBoxLayout" name="filtersLayout">
+           <item>
+            <widget class="QPushButton" name="addFilter_button">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Добавить фильтр</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>от</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QDoubleSpinBox" name="fromSpinBox">
-           <property name="decimals">
-            <number>1</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>до</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QDoubleSpinBox" name="toSpinBox">
-           <property name="decimals">
-            <number>1</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="filterButton">
+          <widget class="QPushButton" name="applyFilter_button">
            <property name="text">
             <string>ОК</string>
            </property>

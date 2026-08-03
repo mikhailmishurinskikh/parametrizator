@@ -68,6 +68,32 @@ void Test::setNewFile(const QString &newFilePath)
     file = new QFile(newFilePath);
 }
 
+void Test::calcCapacities()
+{
+    file->open(QIODevice::ReadOnly);
+    if (columns.contains(Value::Capacity)) {
+        auto capacityColumn = BPD::readColumn(file, columns[Value::Capacity], size);
+        params.capacity = calcAbsMax(capacityColumn);
+    } else params.capacity = 0;
+
+    if (columns.contains(Value::Norm_Capacity)) {
+        auto normCapacityColumn = BPD::readColumn(file, columns[Value::Norm_Capacity], size);
+        params.normCapacity = calcAbsMax(normCapacityColumn);
+    } else params.normCapacity = 0;
+
+    if (columns.contains(Value::Energy)) {
+        auto energyColumn = BPD::readColumn(file, columns[Value::Energy], size);
+        params.energyCapacity = calcAbsMax(energyColumn);
+    } else params.energyCapacity = 0;
+
+    if (columns.contains(Value::Norm_Energy)) {
+        auto normEnergyColumn = BPD::readColumn(file, columns[Value::Energy], size);
+        params.normEnergyCapacity = calcAbsMax(normEnergyColumn);
+    } else params.normEnergyCapacity = 0;
+
+    file->close();
+}
+
 Message TestParams::validate(const Battery* battery, const QStringList& otherNames) const
 {
     if (name.isEmpty()) {

@@ -9,6 +9,7 @@
 #include <QTemporaryDir>
 #include <QDir>
 
+class Test;
 class Battery;
 class BatteryParams;
 
@@ -25,6 +26,7 @@ public:
     QList<Id> ids() const;
     QPair<int, int> count() const;
     QStringList names() const;
+    QVector<QPair<Id, Id>> curves() const;
 
 private:
     Id batteriesCounter;

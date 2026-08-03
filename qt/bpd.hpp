@@ -38,5 +38,7 @@ static inline qint64 alignTo64(qint64 value) {
 
 QVector<TestFloat> readColumn(QFile* file, qint64 offset, qint64 size);
 Message checkFile(QFile* file, QMap<Value, qint64>& columns, qint64& size);
+TestFloat calcCapacity(QFile* file);
+TestFloat calcEnergyCapacity(QFile* file);
 
 } // namespace BPD

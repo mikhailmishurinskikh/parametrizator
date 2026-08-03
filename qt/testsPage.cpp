@@ -67,6 +67,10 @@ void TestsPage::delTest()
     if (index.isValid()) {
         model->removeRow(index);
     }
+
+    if (model->rowCount() == 0) {
+        ui->canvas->clearCanvas();
+    }
 }
 
 void TestsPage::editTest()
@@ -92,11 +96,12 @@ void TestsPage::separateTest()
 void TestsPage::plotSelected(const QModelIndex& current, const QModelIndex& previous)
 {
     QModelIndex index = proxy->mapToSource(current);
+    ui->canvas->clearCanvas();
+    
     if (index.isValid()) {
         Id testId = model->getTestId(index);
         Test* test = battery->get(testId);
 
-        ui->canvas->clearCanvas();
         ui->canvas->addTest(test);
         ui->canvas->plotTest();
     }

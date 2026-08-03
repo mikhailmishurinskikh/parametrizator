@@ -81,7 +81,9 @@ void TestAddDialog::openDialog()
         TestParams params;
         params.name = QFileInfo(filePath).fileName();
         params.type = test->possibleTypes()[0].second;
+
         test->setParams(params);
+        test->calcCapacities();
         tests[counter] = test;
 
         ui->file_comboBox->addItem(filePath, QVariant::fromValue(counter));
