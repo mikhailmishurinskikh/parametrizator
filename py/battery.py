@@ -143,7 +143,7 @@ class BatteriesManager:
     
     
     def ids(self):
-        return self.batteries.keys()
+        return list(self.batteries.keys())
     
     
     def clear(self):

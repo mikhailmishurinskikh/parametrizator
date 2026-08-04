@@ -161,6 +161,7 @@ class TestAddDialog(QDialog, Ui_TestAddDialog):
                 self.testType = testType
             else:
                 QMessageBox.warning(self, "Некорректный файл", message)
+                return
                 
             self.graphicsView.plot(testType, df)
                 

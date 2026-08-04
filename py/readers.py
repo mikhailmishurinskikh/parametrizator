@@ -89,7 +89,7 @@ def txt(file):
         if all(col in data.columns for col in required_cols):    
             if data.iloc[-1].isna().sum() > 1:
                 data = data.iloc[:-1]
-            data[["Time,s", "U,V", "I,A", "Q,Ah"]] = data[["Time,s", "U,V", "I,A", "Q,Ah"]].astype(float)
+            data[["Time,s", "U,V", "I,A", "Q,Ah"]] = data[["Time,s", "U,V", "I,A", "Q,Ah"]].apply(lambda x: x.str.replace(",", ".")).astype(float)
             
             data['Total_Time,s'] = data['Time,s'] + data.groupby('Step', sort=False)['Time,s'].max().shift().fillna(0).cumsum().loc[data['Step']].values
             data["Total_Time,s"] -= data["Total_Time,s"].min()

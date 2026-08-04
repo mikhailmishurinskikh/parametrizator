@@ -4,7 +4,7 @@
 title = BatteryParametrizator
 
 # project root directory. default = The parent directory of input_file
-project_dir = .
+project_dir = py
 
 # source file entry point path. default = main.py
 input_file = py\main.py
