@@ -151,6 +151,7 @@ class TestAddDialog(QDialog, Ui_TestAddDialog):
             "CSV со столбцами NDAX (*.csv);;"
             "Стандартные CSV файлы (*.csv);;"
             "Текстовые файлы ЯРОСТАНМАШ (*.txt);;"
+            "CSV со стендов НАГРУЗКА АКИП (*.csv);;"
             "Все файлы (*.*)"
         )
         

@@ -20,7 +20,10 @@ def read(file, filter):
         
     elif extension == ".csv" and filter == "CSV со столбцами NDAX (*.csv)":
         message, data, testType = csvNdax(file)
-    
+        
+    elif extension == ".csv" and filter == "CSV со стендов НАГРУЗКА АКИП (*.csv)":
+        message, data, testType = NagrCsv(file)
+        
     elif extension == ".xlsx":
         message, data, testType = xlsx(file)
         
@@ -191,6 +194,48 @@ def csvNdax(file):
             data["Total_Time,s"] -= data["Total_Time,s"].min()
             data["Q,Ah"] = data["Capacity(Ah)"].abs()
             data["W,Wh"] = data["Energy(Wh)"].abs()
+            data = data[columns]
+            message = "ok"
+        
+        else:
+            message = f"В файле {file} нет одного из столбцов {required_cols}"
+    
+    except Exception as e:
+        message = str(e)
+            
+    if message == "ok":
+        return message, data, testType
+    else:
+        return message, None, None
+    
+
+def NagrCsv(file):
+    try:
+        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        data = pd.read_csv(file, sep=";", decimal=".")
+        testType = "Исходное испытание"
+        
+        required_cols = ['Id', 'PV8900_1__Voltage', 'PV8900_1__Current', 'PV8900_1__Power', 'SaveTime']
+        if all(col in data.columns for col in required_cols):
+            data["SaveTime"] = pd.to_datetime(data['SaveTime'])
+            has_seconds = (data['SaveTime'].dt.second != 0).any()
+            data['time_group'] = data.groupby('SaveTime').ngroup() + 1
+            time_counts = data.groupby('SaveTime').size()
+            if has_seconds:
+                dt = 1/time_counts.mode()[0]
+            else:
+                dt = 60/time_counts.mode()[0]
+            
+            
+            data["Cycle"] = 1
+            data["Step_index"] = 1
+            data["Step_type"] = "CC Dchg"
+            data["U,V"] = data['PV8900_1__Voltage']
+            data["I,A"] = data['PV8900_1__Current']
+            data["Total_Time,s"] = data["Id"] * dt
+            data["Total_Time,s"] -= data["Total_Time,s"].min()
+            data["Q,Ah"] = data["I,A"].abs().cumsum() * dt / 3600
+            data["W,Wh"] = data["PV8900_1__Power"].abs().cumsum() * dt / 3600
             data = data[columns]
             message = "ok"
         
