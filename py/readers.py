@@ -76,7 +76,7 @@ def txt(file):
                     raise ValueError("Не найдена шапка таблицы в файле (Cycle)")
                 
     try:
-        columns = ['U,V', 'I,A', 'Q,Ah', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
+        columns = ['U,V', 'I,A', 'Q,Ah', 'W,Wh', 'Cycle', 'Total_Time,s', 'Step_index', 'Step_type']
         data = pd.read_csv(
             file,
             sep=r'\s+',
@@ -85,11 +85,11 @@ def txt(file):
         )
         testType = "Исходное испытание"
         
-        required_cols = ["Time,s", "U,V", "I,A", "Q,Ah", "Step", "Cycle"]
-        if all(col in data.columns for col in required_cols):    
+        required_cols = ["Time,s", "U,V", "I,A", "Q,Ah", "E,Wh", "Step", "Cycle"]
+        if all(col in data.columns for col in required_cols):  
             if data.iloc[-1].isna().sum() > 1:
                 data = data.iloc[:-1]
-            data[["Time,s", "U,V", "I,A", "Q,Ah"]] = data[["Time,s", "U,V", "I,A", "Q,Ah"]].apply(lambda x: x.str.replace(",", ".")).astype(float)
+            data[["Time,s", "U,V", "I,A", "Q,Ah", "W,Wh"]] = data[["Time,s", "U,V", "I,A", "Q,Ah", "E,Wh"]].apply(lambda x: x.astype(str).str.replace(",", ".")).astype(float)
             
             data['Total_Time,s'] = data['Time,s'] + data.groupby('Step', sort=False)['Time,s'].max().shift().fillna(0).cumsum().loc[data['Step']].values
             data["Total_Time,s"] -= data["Total_Time,s"].min()
@@ -101,6 +101,7 @@ def txt(file):
             data.loc[data["Step_type"] == "CHCC", "Step_type"] = "CC Chg"
             data.loc[data["Step_type"] == "CHCV", "Step_type"] = "CV Chg"
             data["Q,Ah"] = data["Q,Ah"].abs()
+            data["W,Wh"] = data["W,Wh"].abs()
             data = data[columns]
             message = "ok"
             
